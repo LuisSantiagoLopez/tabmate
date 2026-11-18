@@ -1,92 +1,155 @@
 # Hi, this is Tabmate.
 
-It watches how you work in Chrome, notices when you do the same thing twice, and then does it for you.
+It watches you do a task once or twice, then does it for you on its own.
+No prompts, no approvals, no setup.
 
 **You work once. Tabmate does it forever.**
 
 ![Tabmate taking over a task in the sandbox CRM](docs/demo.gif)
 
-This is a test. A real one. It's open source, it's free, and it probably breaks on some sites. Try it on your boring stuff and [tell us what breaks](../../issues). That's the whole ask.
+Free. Open source (MIT). Everything stays on your computer.
 
-## Install (3 steps, about a minute)
+This is an early test. It will break on some sites. Try it on your boring stuff and [tell us what breaks](../../issues).
 
-The Chrome Web Store version is on the way. Until then:
+## Install (about a minute)
 
-1. **Get the code.** Download [tabmate-extension.zip](https://trytabmate.com/download/tabmate-extension.zip) and unzip it, or clone this repo.
+1. **Get it.** Download [tabmate-extension.zip](https://trytabmate.com/download/tabmate-extension.zip) and unzip it. Or clone this repo.
 2. **Open `chrome://extensions`** and turn on **Developer mode** (top right).
-3. Click **Load unpacked** and pick the `tabmate-extension` folder (or the `extension/` folder if you cloned the repo).
+3. Click **Load unpacked** and pick the `tabmate-extension` folder (or `extension/` if you cloned).
 
-A welcome page opens with a fake CRM to try it on. Do the export task twice, then start it a third time and watch.
+A welcome page opens with a fake CRM to try it on. Do the export task twice. Start it a third time and watch.
 
-## How it works
+## What it does
 
-No AI model, no server. Just your browser.
+- **Learns by watching.** Do the same 3+ steps twice and Tabmate saves them. The pill at the bottom says **Learned**.
+- **Works across tabs and sites.** Copy a row from one site, paste it into a form on another, click Add. Tabmate remembers which tab each step was in. When it replays, it focuses the right tab, or opens it if you closed it.
+- **Fills in the right values.** If what you typed changed between your two runs, Tabmate finds where it came from: text you copied, or a cell in the row you were on. Next time it reads the fresh value from the page instead of retyping an old one.
+- **Works down a list.** If you handled a list one row at a time, Tabmate does every new row for you, and remembers which rows are done.
+- **Takes over on its own.** Start the task (the first 1 or 2 steps) and Tabmate finishes it. A lime cursor shows each click before it happens.
+- **Copes with messy pages.** It finds things by role, label, placeholder, nearby text and position, not just ids. It waits for pages that render late, and works with React and Vue forms, custom dropdowns, rich text boxes, shadow DOM, same-origin iframes, and keyboard shortcuts.
 
-- **It records.** On each page it notes what you click, type, pick and submit, with a sturdy way to find each element again (`data-testid`, `id`, `aria-label`, `name`, button text, and a CSS path as the last resort).
-- **It spots repeats.** When the same 3+ steps happen twice on the same site, it saves them as a workflow and names it, like "Export leads on crm.example.com". The little pill at the bottom of the page says **Learned**.
-- **It takes over.** Next time you start that task (the first 1 or 2 steps), Tabmate finishes it. A lime ghost cursor moves to each thing before it clicks or types, so you can see what it's doing. It works across page loads.
-- **You stay in charge.** Press **Esc** or click anywhere and it stops right away. Every workflow can be turned off, run, or deleted from the toolbar popup. There's an activity log of everything it did.
+## You stay in charge
 
-## The safety rules
-
-- It **never records** passwords, card numbers (`autocomplete="cc-*"`), CVV, or SSN fields, or anything labelled like them. Those steps are saved as "you fill this", with no value.
-- It **never types** into those fields. It stops and shows **Needs you** until you fill them.
-- It **won't click** buttons that say pay, buy, purchase, delete, transfer or confirm payment. It stops and lets you click.
-- Pause it everywhere, or turn it off for one site, from the popup.
+- Press **Esc**, or click anywhere, and it stops at once.
+- It **never records** passwords, card numbers, CVV or SSN fields. It **never types** into them. It stops and says **Needs you**.
+- It **won't click** pay, buy, purchase, delete, transfer or confirm payment. It stops and lets you click.
+- Turn any workflow off, run it, or delete it from the toolbar popup. Pause everywhere, or block one site.
+- There is an activity log of everything it did.
 
 ![Tabmate stops at a card field and asks you to fill it](docs/needs-you.png)
 
+## Connect to Claude
+
+Every website, an MCP server. Each workflow Tabmate learned can be a tool for Claude Desktop and Claude Code.
+
+1. Click the Tabmate icon. Under **Claude**, click **Copy**.
+2. Paste it in Terminal and press Enter. It looks like this:
+
+   ```bash
+   npx tabmate-mcp install --token <your token>
+   ```
+
+3. Restart Claude Desktop. The popup says **Connected to Claude**.
+
+Now ask Claude things like "add the new leads to the CRM". Claude sees:
+
+- `list_workflows`: what Tabmate learned
+- `run_workflow`: run one by name
+- one tool per workflow, with its inputs
+
+Claude runs them in your Chrome, with the same safety rules. Passwords, card fields and pay buttons still wait for you.
+
+What `install` does: it adds a `tabmate` entry to Claude Desktop's and Claude Code's MCP config. It backs up each file first and never touches your other servers. `npx tabmate-mcp uninstall` removes it.
+
+How it stays private:
+
+- The link is your own computer only (`127.0.0.1`). Nothing on the internet can reach it.
+- The extension and the server prove they share a random pairing token. The token itself is never sent.
+- The server refuses web pages and anything that is not the extension.
+- It is off until you click Copy (or turn on "Claude can run my workflows").
+
+The server lives in [`mcp/`](mcp/). Until it is on npm, run it from a clone: `node mcp/bin/tabmate-mcp.js install --token <token>`.
+
 ## Privacy
 
-Everything stays on your computer, in `chrome.storage.local`. Tabmate makes **zero network calls**: no analytics, no server, no remote code. The tests check this on every run. Fonts are bundled.
+Everything stays in your browser (`chrome.storage.local`). No account, no server, no analytics, no remote code. Fonts are bundled. The tests check for network calls on every run.
 
-Why it asks for "read and change all your data on all websites" (`<all_urls>`): it has to run on whatever sites you work on to learn and repeat your tasks. You can't learn a workflow on a site you can't see. Other permissions: `storage` (save workflows locally), `tabs` and `activeTab` (know which tab to run in, and open the welcome page), `scripting` (start Tabmate in a tab that was open before you installed it).
+The one exception is the Claude link above. It only talks to `127.0.0.1`, and only after you turn it on.
 
-## Bonus: every website, an MCP server (beta)
+Permissions, and why:
 
-Open the extension's options page. Each learned workflow is listed as a named tool with a JSON schema you can copy or download. It's an export only. No native host, no server.
+- `<all_urls>`: it has to run on the sites you work on to learn and repeat your tasks.
+- `storage`: save workflows locally.
+- `tabs`, `activeTab`: find, focus and open the right tab for each step.
+- `scripting`: start Tabmate in a tab that was open before you installed it.
+- `alarms`: look for the Claude link every 30 seconds, only while it is turned on.
 
 ## Run the tests
 
 ```bash
 npm install
-npm test            # or: npm run test:headed
+npm test              # everything local: unit, core, cross-site + Claude, React SPA
+npm run test:real     # real public sites (needs internet)
+npm run test:headed   # watch it happen
 ```
 
-The tests load the extension into Chromium and use real mouse and keyboard input to: learn a workflow from two runs, let Tabmate finish the third run, run it from the pill and the popup (across page loads), stop it with Esc and with a click, check that card/CVV/password values never hit storage, check the "Needs you" pauses, test pause and per-site blocking, and check there are no network calls or console errors. Screenshots land in `screenshots/`.
+The tests load the extension into Chromium and use real mouse, keyboard and clipboard input. They cover:
 
-They use Chrome for Testing if Playwright installed it (`npx playwright install chromium`). Set `TABMATE_CHROME=/path/to/chrome` to use another build, and `TABMATE_EXT=/path/to/unzipped/folder` to test a built zip. Regular Google Chrome no longer accepts `--load-extension`.
+- learning from two runs and taking over on the third, across page loads
+- a two-site workflow on two local servers (copy from site A, paste into site B), with a list of new rows done in one go
+- an MCP client calling `run_workflow` through `tabmate-mcp`, including opening a closed tab
+- a React app with random ids, late rendering, a custom dropdown, an iframe, shadow DOM, rich text and Ctrl+Enter
+- Esc and click to stop, card/CVV/password never stored, "Needs you" pauses, pause and per-site block
+- no network calls and no console errors
+- unit tests for the learning logic, the config installer and the link security
+
+They use Chrome for Testing if Playwright installed it (`npx playwright install chromium`). `TABMATE_CHROME=/path/to/chrome` picks another build. `TABMATE_EXT=/path/to/unzipped/folder` tests a built zip. Regular Google Chrome no longer accepts `--load-extension`.
 
 `npm run build` makes the zips in `dist/`.
+
+## What works on real sites
+
+`npm run test:real` does each task twice by hand, then starts it a third time and lets Tabmate finish. Last run, 18 Nov 2026: **4 of 4 passed.**
+
+| Site | Task | Result |
+|---|---|---|
+| the-internet.herokuapp.com | open Checkboxes, tick one, untick one | pass |
+| the-internet.herokuapp.com | log in: Tabmate types the username, waits for you at the password | pass |
+| demoqa.com/text-box | fill a 4-field form and submit | pass |
+| todomvc.com (React) | add a todo with Enter, tick the newest one | pass |
+
+These are live sites. When they are slow, page loads time out and a case fails before Tabmate starts (it happened in earlier runs the same day).
+
+## Known limits
+
+- Cross-origin iframes and closed shadow roots are out of reach.
+- Lists: rows are matched by position and text. If a site reorders rows between runs, it may pick the wrong one.
+- A value it cannot trace to the page is replayed as the last value you typed (Claude can pass a new one).
+- One workflow runs at a time.
+- Sites that block untrusted events (some canvas apps, some games) won't respond.
 
 ## What's in here
 
 ```
 extension/          the extension (this is what you load)
-  content.js        the pill, the recorder and the runner
-  background.js     pattern detection, run state, storage
+  content.js        the pill, the recorder and the step runner
+  background.js     timeline, learning, the cross-tab runner, storage
+  bridge.js         the optional Claude link (127.0.0.1 only)
+  lib/learn.js      learning logic: patterns, variables, lists (pure, unit tested)
+  lib/finder.js     finding elements again (shadow DOM, iframes, scoring)
   popup.*           toolbar popup
-  welcome.*         first-run page
-  options.*         MCP export (beta)
+  options.*         tools for Claude
   sandbox/          fake CRM to try it on
-tests/              end-to-end tests + 2 small test sites
+mcp/                tabmate-mcp: the MCP server and installer
+tests/              end-to-end suites, unit tests, and small test sites
 scripts/            build, icons, store screenshots, demo gif
 store/              Chrome Web Store listing and images
 ```
-
-## Roadmap
-
-- Chrome Web Store release
-- Edit a learned workflow (rename, change a typed value, drop a step)
-- Inputs: ask for a value when a step changes every time
-- Better matching on sites that rebuild their HTML a lot
-- Workflows that span more than one site
-- A real local MCP bridge, opt-in
 
 ## Contributing
 
 Yes please. Read [CONTRIBUTING.md](CONTRIBUTING.md). Bugs with a site name and the steps you took are gold.
 
-Updates and waitlist: [trytabmate.com](https://trytabmate.com).
+Updates: [trytabmate.com](https://trytabmate.com).
 
 MIT license. Go build something.

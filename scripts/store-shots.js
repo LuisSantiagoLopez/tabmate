@@ -8,9 +8,9 @@ const F = (f) => 'file://' + path.join(ROOT, 'extension/fonts', f);
 const img = (f) => 'data:image/png;base64,' + fs.readFileSync(path.join(ROOT, 'screenshots', f)).toString('base64');
 const SHOTS = [
   ['store-1-learns.png', 'It learns what you repeat.', 'Do a task twice. Tabmate names it and remembers it.', 'pill-learned.png', 'wide'],
-  ['store-2-does-it.png', 'Then it does it for you.', 'Start the task and Tabmate takes over. Press Esc any time.', 'pill-running.png', 'wide'],
+  ['store-2-does-it.png', 'Then it does it for you.', 'Even across tabs and sites, row after row. Press Esc any time.', 'pill-running-cross-site.png', 'wide'],
   ['store-3-safe.png', 'Your secrets stay yours.', 'Passwords and card fields are never recorded. Pay and delete wait for you.', 'pill-needs-you-pay.png', 'wide'],
-  ['store-4-popup.png', 'See everything it learned.', 'Turn workflows on or off, run them, and read what Tabmate did.', 'popup.png', 'tall'],
+  ['store-4-popup.png', 'Hand it to Claude.', 'Every workflow becomes a tool for Claude. The link stays on your computer.', 'popup-connected.png', 'tall'],
   ['store-5-start.png', 'Try it in one minute.', 'A built-in sandbox CRM shows the whole loop. Nothing leaves your computer.', 'welcome.png', 'wide'],
 ];
 (async () => {

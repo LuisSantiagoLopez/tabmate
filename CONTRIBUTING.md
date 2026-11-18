@@ -24,7 +24,7 @@ Please don't paste anything private. Tabmate's data lives only in your browser, 
 
 ## Rules we keep
 
-- **No network calls.** No analytics, no remote code, no CDNs. The tests fail if the extension makes a request.
+- **No network calls.** No analytics, no remote code, no CDNs. The tests fail if the extension makes a request. The one exception is the opt-in Claude link, and it only ever talks to 127.0.0.1.
 - **Never record or type secrets.** Password, card, CVV and SSN fields stay "you fill this". If you touch the recorder or runner, keep those tests passing.
 - **Stop means stop.** Esc and any real click end a run at once.
 - **Small permissions.** Don't add a permission without saying why in the PR and the README.

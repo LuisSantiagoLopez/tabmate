@@ -43,8 +43,9 @@
   }
 
   async function render() {
-    const d = await chrome.storage.local.get(['settings', 'workflows', 'log']);
-    const settings = Object.assign({ paused: false, blocked: [] }, d.settings || {});
+    const d = await chrome.storage.local.get(['settings', 'workflows', 'log', 'bridgeToken']);
+    const settings = Object.assign({ paused: false, blocked: [], bridge: false }, d.settings || {});
+    const { bridge = { connected: 0, clients: [] } } = await chrome.storage.session.get('bridge');
     const workflows = d.workflows || [];
     const log = d.log || [];
 
@@ -72,7 +73,8 @@
       toggle.checked = wf.enabled;
       toggle.addEventListener('change', async () => { await send({ type: 'toggle-workflow', workflowId: wf.id, enabled: toggle.checked }); render(); });
       const run = el('button', { class: 'btn btn--lime btn--sm', type: 'button', 'data-run': wf.id }, 'Run');
-      run.disabled = !wf.enabled || settings.paused || settings.blocked.includes(wf.site);
+      const sites = wf.sites || [wf.site];
+      run.disabled = !wf.enabled || settings.paused || sites.some((s) => settings.blocked.includes(s));
       if (run.disabled) run.style.opacity = '.45';
       run.addEventListener('click', async () => {
         if (!tab) return;
@@ -89,12 +91,25 @@
         del.style.padding = '0 8px';
         setTimeout(render, 2500);
       });
-      const meta = [S.siteLabel(wf.site), wf.steps.length + ' steps', 'ran ' + wf.runs + '×', 'saved ' + (wf.savedMs ? S.formatSaved(wf.savedMs) : '0 min')].join(' · ');
+      const meta = [wf.steps.length + ' steps', 'ran ' + wf.runs + '×', 'saved ' + (wf.savedMs ? S.formatSaved(wf.savedMs) : '0 min')].join(' · ');
+      // Where it goes: one chip per site, in order, plus "each row" for list workflows.
+      const route = el('span', { class: 'flow__route', 'data-sites': String(sites.length) });
+      sites.forEach((s, i) => { if (i) route.append(el('span', { class: 'arrow', 'aria-hidden': 'true' }, '→')); route.append(el('span', { class: 'chip' }, S.siteLabel(s))); });
+      if (wf.loop) route.append(el('span', { class: 'chip chip--loop' }, 'each new row'));
       list.append(el('li', { class: 'flow' + (wf.enabled ? '' : ' off') },
         el('span', { class: 'flow__name' }, wf.name),
+        route,
         el('span', { class: 'flow__meta' }, meta),
         el('span', { class: 'flow__ctl' }, run, el('span', { class: 'switch' }, toggle, el('span')), del)));
     }
+
+    // Claude
+    const on = bridge.connected > 0 && settings.bridge;
+    $('claudeState').dataset.on = on ? '1' : '0';
+    $('claudeState').textContent = on ? 'Connected to Claude' + (bridge.clients && bridge.clients.length ? ' (' + bridge.clients.join(', ') + ')' : '') : settings.bridge ? 'Waiting for Claude' : 'Not connected';
+    $('claudeCmd').textContent = 'npx tabmate-mcp install --token ' + (d.bridgeToken || '');
+    $('claudeSetup').hidden = on;
+    $('bridgeOn').checked = !!settings.bridge;
 
     // Activity
     const ol = $('log');
@@ -118,6 +133,13 @@
 
   $('globalOn').addEventListener('change', async (e) => { await send({ type: 'set-paused', paused: !e.target.checked }); render(); });
   $('siteOn').addEventListener('change', async (e) => { await send({ type: 'set-site-watch', site: tabSite, on: e.target.checked }); render(); });
+  $('copyCmd').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('claudeCmd').textContent); $('copyCmd').textContent = 'Copied'; } catch (e) { $('copyCmd').textContent = 'Select it'; }
+    await send({ type: 'set-bridge', on: true }); // copying the command means: look for Claude
+    setTimeout(() => { $('copyCmd').textContent = 'Copy'; }, 2000);
+    render();
+  });
+  $('bridgeOn').addEventListener('change', async (e) => { await send({ type: 'set-bridge', on: e.target.checked }); render(); });
   $('clearLog').addEventListener('click', async () => { await send({ type: 'clear-log' }); render(); });
   $('openSandbox').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('sandbox/crm.html') }));
   $('openOptions').addEventListener('click', (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); });

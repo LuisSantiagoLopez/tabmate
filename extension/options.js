@@ -3,29 +3,7 @@
   const S = self.TabmateShared;
   const $ = (id) => document.getElementById(id);
 
-  const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60) || 'tool';
-
-  function toTool(wf) {
-    const properties = {};
-    const notes = [];
-    const used = new Set();
-    wf.steps.forEach((st, i) => {
-      if (st.kind !== 'input' && st.kind !== 'select' && st.kind !== 'check') return;
-      if (st.sensitive) { notes.push('Step ' + (i + 1) + ' (' + st.label + ') is private and is filled by the user.'); return; }
-      let key = slug(st.label);
-      while (used.has(key)) key += '_' + (i + 1);
-      used.add(key);
-      properties[key] = st.kind === 'check'
-        ? { type: 'boolean', description: st.label, default: !!st.value }
-        : { type: 'string', description: st.label + (st.kind === 'select' ? ' (option value)' : ''), default: st.value == null ? '' : String(st.value) };
-    });
-    return {
-      name: slug(wf.name),
-      description: wf.name + '. ' + wf.steps.length + ' steps, learned by Tabmate.' + (notes.length ? ' ' + notes.join(' ') : ''),
-      inputSchema: { type: 'object', properties, additionalProperties: false },
-      annotations: { site: S.siteLabel(wf.site), startUrl: wf.steps[0] ? wf.steps[0].url : '', steps: wf.steps.map((s) => s.kind + ': ' + s.label) },
-    };
-  }
+  const L = self.TabmateLearn;
 
   let exportJson = '';
 
@@ -37,6 +15,7 @@
     root.textContent = '';
     $('empty').hidden = workflows.length > 0;
     const all = [];
+    const taken = new Set();
     for (const [site, wfs] of Object.entries(bySite)) {
       const sec = document.createElement('section');
       sec.className = 'site';
@@ -44,7 +23,7 @@
       h.textContent = S.siteLabel(site);
       sec.append(h);
       for (const wf of wfs) {
-        const tool = toTool(wf);
+        const tool = L.toTool(L.migrate(wf), taken);
         all.push(tool);
         const card = document.createElement('div');
         card.className = 'tool';

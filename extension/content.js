@@ -8,8 +8,7 @@
   if (!window.chrome || !chrome.runtime || !chrome.runtime.id) return;
 
   const S = self.TabmateShared;
-  const site = location.host;
-  if (!/^(https?|chrome-extension):$/.test(location.protocol) || !site) return;
+  if (!/^(https?|chrome-extension):$/.test(location.protocol) || !location.host) return;
 
   /* ---------------- state ---------------- */
   let enabled = false;        // watching on this page
@@ -18,7 +17,8 @@
   let lastSubmitClickTs = 0;
   let pageGone = false;
 
-  addEventListener('pagehide', () => { pageGone = true; if (running) running.abort('unload'); });
+  // The next page picks the run back up; nothing to report from here.
+  addEventListener('pagehide', () => { pageGone = true; if (running) { running.aborted = true; endRunHere(); } });
 
   function send(msg) {
     return new Promise((resolve) => {
@@ -171,148 +171,27 @@
   }
 
   /* ================================================================
-     ELEMENT DESCRIPTORS (robust selectors)
-     ================================================================ */
-  const cssEsc = (s) => (window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&'));
-  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-  const looksGenerated = (id) => !id || /\d{3,}|^[0-9a-f-]{8,}$|^(ember|react|radix|mui|headlessui)|^:r|[:]/i.test(id);
-
-  function roleOf(el) {
-    const r = el.getAttribute('role');
-    if (r) return r;
-    const t = el.tagName.toLowerCase();
-    if (t === 'a') return 'link';
-    if (t === 'button' || (t === 'input' && /^(submit|button|reset)$/.test(el.type))) return 'button';
-    if (t === 'select') return 'combobox';
-    if (t === 'textarea' || t === 'input') return 'textbox';
-    return t;
-  }
-
-  function textOf(el) {
-    if (el.tagName === 'INPUT' && /^(submit|button|reset)$/.test(el.type)) return norm(el.value);
-    return norm(el.innerText || el.textContent).slice(0, 60);
-  }
-
-  function labelText(el) {
-    let t = '';
-    if (el.labels && el.labels.length) t = norm(el.labels[0].innerText);
-    if (!t && el.getAttribute('aria-labelledby')) {
-      const l = document.getElementById(el.getAttribute('aria-labelledby'));
-      if (l) t = norm(l.innerText);
-    }
-    return t.slice(0, 60);
-  }
-
-  function friendlyLabel(el) {
-    return (norm(el.getAttribute('aria-label')) || labelText(el) || norm(el.getAttribute('placeholder')) ||
-      (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) ? '' : textOf(el)) || norm(el.getAttribute('name')) ||
-      norm(el.getAttribute('title')) || el.tagName.toLowerCase()).slice(0, 60);
-  }
-
-  function cssPath(el) {
-    const parts = [];
-    let cur = el;
-    while (cur && cur.nodeType === 1 && cur !== document.documentElement && parts.length < 6) {
-      if (cur.id && !looksGenerated(cur.id)) { parts.unshift('#' + cssEsc(cur.id)); break; }
-      const tag = cur.tagName.toLowerCase();
-      let idx = 1, sib = cur;
-      while ((sib = sib.previousElementSibling)) if (sib.tagName === cur.tagName) idx++;
-      parts.unshift(tag + ':nth-of-type(' + idx + ')');
-      cur = cur.parentElement;
-    }
-    return parts.join(' > ');
-  }
-
-  function unique(sel) {
-    try { return document.querySelectorAll(sel).length === 1; } catch (e) { return false; }
-  }
-
-  function byText(tag, role, text) {
-    if (!text) return [];
-    const els = document.querySelectorAll(tag || '*');
-    const out = [];
-    for (const e of els) if (roleOf(e) === role && textOf(e) === text && visible(e)) out.push(e);
-    return out;
-  }
-
-  function describe(el) {
-    const tag = el.tagName.toLowerCase();
-    const sel = {
-      tag,
-      testid: el.getAttribute('data-testid') || el.getAttribute('data-test-id') || el.getAttribute('data-test') || '',
-      id: looksGenerated(el.id) ? '' : el.id,
-      aria: norm(el.getAttribute('aria-label')),
-      name: el.getAttribute('name') || '',
-      role: roleOf(el),
-      text: /^(input|select|textarea)$/.test(tag) && !/^(submit|button|reset)$/.test(el.type) ? '' : textOf(el),
-      css: cssPath(el),
-    };
-    let key;
-    if (sel.testid && unique(`[data-testid="${cssEsc(sel.testid)}"]`)) key = 'testid:' + sel.testid;
-    else if (sel.id && unique('#' + cssEsc(sel.id))) key = 'id:' + sel.id;
-    else if (sel.aria && unique(`${tag}[aria-label="${cssEsc(sel.aria)}"]`)) key = 'aria:' + tag + ':' + sel.aria;
-    else if (sel.name && unique(`${tag}[name="${cssEsc(sel.name)}"]`)) key = 'name:' + tag + ':' + sel.name;
-    else if (sel.text && byText(tag, sel.role, sel.text).length === 1) key = 'text:' + sel.role + ':' + sel.text;
-    else key = 'css:' + sel.css;
-    return { key, sel };
-  }
-
-  function visible(el) {
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
-  }
-
-  function resolve(target) {
-    const s = target.sel || {};
-    const tries = [];
-    const k = target.key || '';
-    const order = ['testid', 'id', 'aria', 'name', 'text', 'css'];
-    const first = k.split(':')[0];
-    order.sort((a, b) => (a === first ? -1 : b === first ? 1 : 0));
-    for (const kind of order) {
-      try {
-        if (kind === 'testid' && s.testid) tries.push(() => document.querySelector(`[data-testid="${cssEsc(s.testid)}"],[data-test-id="${cssEsc(s.testid)}"],[data-test="${cssEsc(s.testid)}"]`));
-        if (kind === 'id' && s.id) tries.push(() => document.getElementById(s.id));
-        if (kind === 'aria' && s.aria) tries.push(() => document.querySelector(`${s.tag}[aria-label="${cssEsc(s.aria)}"]`));
-        if (kind === 'name' && s.name) tries.push(() => document.querySelector(`${s.tag}[name="${cssEsc(s.name)}"]`));
-        if (kind === 'text' && s.text) tries.push(() => byText(s.tag, s.role, s.text)[0] || null);
-        if (kind === 'css' && s.css) tries.push(() => document.querySelector(s.css));
-      } catch (e) { /* bad selector: skip */ }
-    }
-    for (const t of tries) {
-      let el = null;
-      try { el = t(); } catch (e) { el = null; }
-      if (el && el.isConnected && visible(el) && !el.disabled) return el;
-    }
-    return null;
-  }
-
-  /* ================================================================
-     SENSITIVE FIELDS: never recorded, never typed into
-     ================================================================ */
-  function isSensitive(el) {
-    if (!el || !el.tagName) return false;
-    const type = (el.getAttribute('type') || '').toLowerCase();
-    if (type === 'password') return true;
-    const ac = (el.getAttribute('autocomplete') || '').toLowerCase();
-    if (/(^|\s)cc-|password|one-time-code/.test(ac)) return true;
-    const hay = [el.name, el.id, el.getAttribute('aria-label'), el.getAttribute('placeholder'), labelText(el), ac].join(' ');
-    return S.SENSITIVE_WORDS.test(hay);
-  }
-
-  /* ================================================================
      RECORDER
+     Watches the top page, its same-origin iframes and open shadow roots.
+     Text fields are recorded once, when you leave them (or press Enter, or paste).
      ================================================================ */
+  const F = self.TabmateFinder;
+  const { norm } = F;
   const TEXTLIKE = /^(text|email|search|tel|url|number|date|datetime-local|month|week|time|)$/;
-  const CLICKABLE = 'a[href],button,[role=button],[role=link],[role=tab],[role=menuitem],[role=option],[role=switch],input[type=submit],input[type=button],input[type=reset],summary';
+  const CLICKABLE = 'a[href],button,[role=button],[role=link],[role=tab],[role=menuitem],[role=option],[role=switch],[role=checkbox],[role=radio],input[type=submit],input[type=button],input[type=reset],summary';
+  const COPY_PASTE_KEYS = /^[cvxazy]$/i;
 
   function inPill(e) {
     return e.composedPath && e.composedPath().includes(host);
   }
-
   function canRecord(e) {
     return enabled && !running && e.isTrusted && !inPill(e);
   }
+  const realTarget = (e) => (e.composedPath && e.composedPath()[0]) || e.target;
+  const isTextField = (el) => !!el && el.nodeType === 1 && (el.tagName === 'TEXTAREA' ||
+    (el.tagName === 'INPUT' && (TEXTLIKE.test((el.getAttribute('type') || '').toLowerCase()) || el.type === 'password')) || el.isContentEditable);
+  const editableRoot = (el) => { let c = el; while (c && c.parentElement && c.parentElement.isContentEditable) c = c.parentElement; return c; };
+  const fieldValue = (el) => (el.isContentEditable ? norm(el.innerText) : String(el.value));
 
   function heading() {
     const h = document.querySelector('h1');
@@ -320,257 +199,502 @@
   }
 
   function baseStep(kind, el) {
-    const t = describe(el);
-    return {
-      kind, target: t, label: friendlyLabel(el), value: null, sensitive: false,
+    const step = {
+      kind, target: F.describe(el), label: F.friendlyLabel(el), value: null, sensitive: false, item: null,
       path: S.pathPattern(location.pathname), url: location.origin + location.pathname + location.search,
       heading: heading(), title: norm(document.title).slice(0, 60), ts: Date.now(),
     };
+    // Inside a repeated list, a step is "this element in some row". The two recordings
+    // decide later whether the row stays the same, moves on, or is always the newest.
+    const item = F.listItemOf(el);
+    if (item) step.item = Object.assign(item, { generic: true });
+    return step;
   }
 
   async function record(step) {
     const res = await send({ type: 'step', step });
-    if (!res) return;
-    if (res.learned) {
-      readyWorkflows = res.ready || readyWorkflows;
-      flash({ state: 'learned', main: 'Learned: <b>' + esc(res.learned.name) + '</b>', sub: res.learned.steps + ' steps' }, 4600);
-    }
-    if (res.run && !pageGone) startRun(res.run, res.workflow);
+    if (!res || !res.learned) return;
+    readyWorkflows = res.ready || readyWorkflows;
+    flash({ state: 'learned', main: 'Learned: <b>' + esc(res.learned.name) + '</b>', sub: res.learned.steps + ' steps' }, 4600);
   }
 
-  document.addEventListener('click', (e) => {
+  // Text fields typed into but not yet recorded.
+  const dirty = new Set();
+  const lastRecorded = new WeakMap();
+
+  function flushField(el, extra) {
+    if (!el || !dirty.has(el)) return;
+    dirty.delete(el);
+    if (!el.isConnected) return;
+    const value = fieldValue(el);
+    if (lastRecorded.get(el) === value) return;
+    lastRecorded.set(el, value);
+    const step = baseStep('input', el);
+    if (F.isSensitive(el)) step.sensitive = true;
+    else step.value = value.slice(0, 2000);
+    if (el.isContentEditable) step.editable = true;
+    Object.assign(step, extra || {});
+    record(step);
+  }
+  function flushAll() {
+    for (const el of [...dirty]) flushField(el);
+  }
+
+  function onClick(e) {
     if (!canRecord(e)) return;
-    const raw = e.target && e.target.closest ? e.target : null;
-    if (!raw) return;
+    const raw = realTarget(e);
+    if (!raw || !raw.closest) return;
     if (raw.closest('input:not([type=submit]):not([type=button]):not([type=reset]),textarea,select,label,[contenteditable=""],[contenteditable=true]')) return;
-    const el = raw.closest(CLICKABLE);
+    let el = raw.closest(CLICKABLE);
+    if (!el) el = pointerTarget(raw);
     if (!el) return;
+    flushAll();
     const step = baseStep('click', el);
     if (el.form && (el.type === 'submit' || (el.tagName === 'BUTTON' && !el.getAttribute('type')))) lastSubmitClickTs = Date.now();
     record(step);
-  }, true);
+  }
 
-  document.addEventListener('change', (e) => {
-    if (!canRecord(e)) return;
-    const el = e.target;
-    if (!el || !el.tagName) return;
-    const tag = el.tagName;
+  // Custom widgets (div buttons, dropdown options) often only show a pointer cursor.
+  function pointerTarget(raw) {
+    const view = raw.ownerDocument.defaultView;
+    let cur = raw;
+    for (let d = 0; cur && d < 4 && cur !== cur.ownerDocument.body; d++, cur = cur.parentElement) {
+      const r = cur.getBoundingClientRect();
+      if (r.width * r.height > 0.3 * view.innerWidth * view.innerHeight) return null;
+      if (cur.hasAttribute('onclick') || cur.hasAttribute('tabindex') || view.getComputedStyle(cur).cursor === 'pointer') return cur;
+    }
+    return null;
+  }
+
+  function recordChoice(el) {
     let step;
-    if (tag === 'SELECT') {
+    if (el.tagName === 'SELECT') {
       step = baseStep('select', el);
       step.value = el.value;
       const opt = el.options[el.selectedIndex];
       step.valueLabel = opt ? norm(opt.text).slice(0, 60) : '';
-    } else if (tag === 'TEXTAREA' || (tag === 'INPUT' && TEXTLIKE.test((el.getAttribute('type') || '').toLowerCase()))) {
-      step = baseStep('input', el);
-      step.value = String(el.value).slice(0, 2000);
-    } else if (tag === 'INPUT' && /^(checkbox|radio)$/.test(el.type)) {
+    } else if (el.tagName === 'INPUT' && /^(checkbox|radio)$/.test(el.type)) {
       step = baseStep('check', el);
       step.value = !!el.checked;
-    } else if (tag === 'INPUT' && el.type === 'password') {
-      step = baseStep('input', el);
-    } else return;
-    if (isSensitive(el)) { step.sensitive = true; step.value = null; delete step.valueLabel; }
+    } else return false;
+    if (F.isSensitive(el)) { step.sensitive = true; step.value = null; delete step.valueLabel; }
     record(step);
-  }, true);
+    return true;
+  }
 
-  document.addEventListener('submit', (e) => {
+  function onChange(e) {
+    if (!canRecord(e)) return;
+    const el = realTarget(e);
+    if (!el || !el.tagName) return;
+    if (recordChoice(el)) return;
+    if (isTextField(el)) { dirty.add(el); flushField(el); }
+  }
+
+  // "change" does not leave shadow roots, "input" does. Use it for fields inside shadow DOM.
+  function onInput(e) {
+    if (!e.isTrusted || inPill(e)) return;
+    const raw = realTarget(e);
+    if (!raw || !raw.tagName) return;
+    const el = raw.isContentEditable ? editableRoot(raw) : raw;
+    if (isTextField(el)) { if (canRecord(e)) dirty.add(el); return; }
+    if (canRecord(e) && el.getRootNode() !== el.ownerDocument) recordChoice(el);
+  }
+
+  function onFocusOut(e) {
+    if (!canRecord(e)) return;
+    const raw = realTarget(e);
+    if (raw && raw.nodeType === 1) flushField(raw.isContentEditable ? editableRoot(raw) : raw);
+  }
+
+  function onPaste(e) {
+    if (!canRecord(e)) return;
+    const raw = realTarget(e);
+    if (!isTextField(raw)) return;
+    const el = raw.isContentEditable ? editableRoot(raw) : raw;
+    setTimeout(() => { dirty.add(el); flushField(el, { pasted: true }); }, 0);
+  }
+
+  function onCopy(e) {
+    if (!canRecord(e)) return;
+    const doc = (realTarget(e) && realTarget(e).ownerDocument) || document;
+    const active = deepActive(doc);
+    let el, text;
+    if (active && /^(INPUT|TEXTAREA)$/.test(active.tagName)) {
+      if (F.isSensitive(active)) return;
+      el = active;
+      text = String(active.value).slice(active.selectionStart || 0, active.selectionEnd || 0);
+    } else {
+      const sel = doc.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+      text = sel.toString();
+      const asEl = (n) => (n && n.nodeType === 1 ? n : n && n.parentElement);
+      const anchor = asEl(sel.anchorNode), common = asEl(sel.getRangeAt(0).commonAncestorContainer);
+      el = [anchor, common].find((c) => c && norm(c.innerText).includes(norm(text))) || common;
+    }
+    text = norm(text);
+    if (!el || !text || F.isSensitive(el)) return;
+    flushAll();
+    const step = baseStep('copy', el);
+    step.value = text.slice(0, 2000);
+    step.label = 'Copy ' + (F.friendlyLabel(el) || 'text').slice(0, 50);
+    record(step);
+  }
+
+  function deepActive(doc) {
+    let a = doc.activeElement;
+    while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement;
+    return a;
+  }
+
+  function onKeyDown(e) {
+    if (!canRecord(e) || e.repeat) return;
+    const el = realTarget(e);
+    const mods = e.ctrlKey || e.metaKey || e.altKey;
+    const target = el && el.nodeType === 1 && el !== el.ownerDocument.body && el !== el.ownerDocument.documentElement ? (el.isContentEditable ? editableRoot(el) : el) : null;
+    let isShortcut = false;
+    if (e.key === 'Enter' && !mods && target && isTextField(target) && target.tagName !== 'TEXTAREA' && !target.isContentEditable && !target.form) isShortcut = true;
+    if (mods && !/^(Control|Meta|Alt|Shift)$/.test(e.key) && !(COPY_PASTE_KEYS.test(e.key) && !e.altKey && !e.shiftKey) && e.key !== 'Tab') isShortcut = true;
+    if (!isShortcut) return;
+    flushAll();
+    const step = target ? baseStep('key', target) : Object.assign(baseStep('key', el.ownerDocument.body), { target: null, item: null });
+    step.keys = { key: e.key, code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, shift: e.shiftKey };
+    step.label = 'Press ' + [e.ctrlKey && 'Ctrl', e.metaKey && 'Cmd', e.altKey && 'Alt', e.shiftKey && 'Shift', e.key].filter(Boolean).join('+');
+    record(step);
+  }
+
+  function onSubmit(e) {
     if (!canRecord(e)) return;
     if (Date.now() - lastSubmitClickTs < 1200) return; // the button click already covers it
     const form = e.target;
     if (!form || form.tagName !== 'FORM') return;
+    flushAll();
     const step = baseStep('submit', form);
     const btn = form.querySelector('button[type=submit],input[type=submit],button:not([type])');
-    step.label = btn ? textOf(btn) || 'Submit' : 'Submit form';
+    step.label = btn ? F.textOf(btn) || 'Submit' : 'Submit form';
     record(step);
-  }, true);
-
-  /* ================================================================
-     RUNNER
-     ================================================================ */
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  function moveCursorTo(el) {
-    const r = el.getBoundingClientRect();
-    const x = Math.round(r.left + Math.min(r.width / 2, 40));
-    const y = Math.round(r.top + r.height / 2);
-    cursor.classList.add('on');
-    cursor.style.transform = `translate(${x - 4}px, ${y - 3}px)`;
   }
 
+  const watchedDocs = new WeakSet();
+  function watchDoc(doc) {
+    if (!doc || watchedDocs.has(doc)) return;
+    watchedDocs.add(doc);
+    doc.addEventListener('click', onClick, true);
+    doc.addEventListener('change', onChange, true);
+    doc.addEventListener('input', onInput, true);
+    doc.addEventListener('focusout', onFocusOut, true);
+    doc.addEventListener('paste', onPaste, true);
+    doc.addEventListener('copy', onCopy, true);
+    doc.addEventListener('keydown', onKeyDown, true);
+    doc.addEventListener('submit', onSubmit, true);
+    if (doc !== document) {
+      doc.addEventListener('keydown', onRunKey, true);
+      doc.addEventListener('pointerdown', onRunPointer, true);
+    }
+    watchFrames(doc);
+    try {
+      new MutationObserver(() => watchFrames(doc)).observe(doc.documentElement, { childList: true, subtree: true });
+    } catch (e) { /* document gone */ }
+  }
+  function watchFrames(doc) {
+    for (const fr of doc.querySelectorAll('iframe,frame')) {
+      if (fr.__tabmateFrame) continue;
+      fr.__tabmateFrame = true;
+      const attach = () => { let d = null; try { d = fr.contentDocument; } catch (e) { d = null; } if (d && d.documentElement) watchDoc(d); };
+      fr.addEventListener('load', attach);
+      attach();
+    }
+  }
+
+  /* ================================================================
+     RUNNER (one step at a time; the service worker picks tabs and order)
+     ================================================================ */
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const motion = () => !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function moveCursorTo(el) {
+    const r = viewRect(el);
+    cursor.classList.add('on');
+    cursor.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 40)) - 4}px, ${Math.round(r.top + r.height / 2) - 3}px)`;
+  }
   function tapCursor() {
     cursor.classList.remove('click');
     void cursor.offsetWidth;
     cursor.classList.add('click');
   }
-
   function showRing(el) {
-    const r = el.getBoundingClientRect();
+    const r = viewRect(el);
     Object.assign(ring.style, { left: r.left - 4 + 'px', top: r.top - 4 + 'px', width: r.width + 8 + 'px', height: r.height + 8 + 'px' });
     ring.classList.add('on');
   }
+  // Element box in top-page coordinates (adds iframe offsets).
+  function viewRect(el) {
+    const r = el.getBoundingClientRect();
+    let left = r.left, top = r.top;
+    let w = el.ownerDocument.defaultView;
+    try {
+      while (w && w !== window && w.frameElement) { const fr = w.frameElement.getBoundingClientRect(); left += fr.left; top += fr.top; w = w.parent; }
+    } catch (e) { /* cross-origin */ }
+    return { left, top, width: r.width, height: r.height };
+  }
 
-  function setValue(el, value) {
+  // Wait until the page stops changing (SPA re-renders, late network) or a short limit passes.
+  function settle(maxMs) {
+    return new Promise((resolve) => {
+      let timer = null, done = false, lastNet = Date.now();
+      const finish = () => { if (done) return; done = true; mo.disconnect(); po && po.disconnect(); clearTimeout(cap); resolve(); };
+      const quiet = () => { clearTimeout(timer); timer = setTimeout(() => (Date.now() - lastNet >= 250 ? finish() : quiet()), 160); };
+      const mo = new MutationObserver(quiet);
+      mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+      let po = null;
+      try { po = new PerformanceObserver(() => { lastNet = Date.now(); quiet(); }); po.observe({ type: 'resource', buffered: false }); } catch (e) { po = null; }
+      const cap = setTimeout(finish, maxMs);
+      quiet();
+    });
+  }
+
+  function nativeSetter(el) {
     const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
-    const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+    const own = el.ownerDocument.defaultView;
+    const realProto = (own && own[proto.constructor.name] && own[proto.constructor.name].prototype) || proto;
+    const desc = Object.getOwnPropertyDescriptor(realProto, 'value');
+    return desc && desc.set;
+  }
+
+  // Sets a value the way typing does, so React, Vue and plain pages all see it.
+  function setValue(el, value) {
     el.focus({ preventScroll: true });
-    if (desc && desc.set) desc.set.call(el, value); else el.value = value;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
+    if (el.isContentEditable) {
+      const doc = el.ownerDocument;
+      const range = doc.createRange();
+      range.selectNodeContents(el);
+      const sel = doc.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      const ok = doc.execCommand && doc.execCommand('insertText', false, value);
+      if (!ok || norm(el.innerText) !== norm(value)) {
+        el.textContent = value;
+        el.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: value }));
+      }
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+    if (el.tagName === 'SELECT' && ![...el.options].some((o) => o.value === value)) {
+      const byLabel = [...el.options].find((o) => norm(o.text) === norm(value));
+      if (byLabel) value = byLabel.value;
+    }
+    const set = nativeSetter(el);
+    if (set) set.call(el, value); else el.value = value;
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText', data: String(value) }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function pressKeys(el, keys) {
+    const target = el || deepActive(document) || document.body;
+    const code = keys.key === 'Enter' ? 13 : keys.key && keys.key.length === 1 ? keys.key.toUpperCase().charCodeAt(0) : 0;
+    const init = { key: keys.key, code: keys.code, ctrlKey: !!keys.ctrl, metaKey: !!keys.meta, altKey: !!keys.alt, shiftKey: !!keys.shift, bubbles: true, cancelable: true, composed: true };
+    if (el && el.focus) el.focus({ preventScroll: true });
+    const fire = (type) => {
+      const ev = new KeyboardEvent(type, init);
+      Object.defineProperty(ev, 'keyCode', { get: () => code });
+      Object.defineProperty(ev, 'which', { get: () => code });
+      return target.dispatchEvent(ev);
+    };
+    const go = fire('keydown');
+    if (go && keys.key === 'Enter') fire('keypress');
+    fire('keyup');
+  }
+
+  function clickLikeAPerson(el) {
+    if (el.focus) el.focus({ preventScroll: true });
+    const r = el.getBoundingClientRect();
+    const at = { bubbles: true, cancelable: true, composed: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 0 };
+    const view = el.ownerDocument.defaultView;
+    el.dispatchEvent(new view.PointerEvent('pointerdown', Object.assign({ pointerId: 1, isPrimary: true }, at)));
+    el.dispatchEvent(new view.MouseEvent('mousedown', at));
+    el.dispatchEvent(new view.PointerEvent('pointerup', Object.assign({ pointerId: 1, isPrimary: true }, at)));
+    el.dispatchEvent(new view.MouseEvent('mouseup', at));
+    el.click();
+  }
+
+  function selectForShow(el) {
+    try {
+      const doc = el.ownerDocument;
+      const range = doc.createRange();
+      range.selectNodeContents(el);
+      doc.getSelection().removeAllRanges();
+      doc.getSelection().addRange(range);
+    } catch (e) { /* not selectable */ }
+  }
+
+  // Run state in this tab. One run can touch several tabs; each tab only knows its own steps.
+  function beginRun(runId) {
+    if (running && running.runId === runId) return running;
+    if (running) endRunHere();
+    running = { runId, aborted: false, mode: 'running', waitingOn: null, resumeFn: null };
+    return running;
+  }
+  function endRunHere() {
+    cursor.classList.remove('on');
+    ring.classList.remove('on');
+    if (running && running.resumeFn) running.resumeFn();
+    running = null;
+  }
+  function stopByPerson() {
+    if (!running || running.aborted) return;
+    const runId = running.runId;
+    running.aborted = true;
+    endRunHere();
+    send({ type: 'run-stop', runId });
+    flash({ state: 'stopped', main: 'Stopped', sub: 'You have control' }, 3000);
+  }
+  function onRunKey(e) {
+    if (running && e.key === 'Escape' && e.isTrusted) { e.stopPropagation(); stopByPerson(); }
+  }
+  function onRunPointer(e) {
+    if (!running || !e.isTrusted || inPill(e)) return;
+    const ctl = running;
+    if (ctl.mode === 'needs') {
+      // While waiting on the person, a click on the flagged button is them doing that step.
+      const w = ctl.waitingOn;
+      const t = realTarget(e);
+      if (w && w.risky && (t === w.el || w.el.contains(t))) {
+        w.byUser = true;
+        send({ type: 'progress', runId: ctl.runId, acted: w.index });
+        setTimeout(() => ctl.resumeFn && ctl.resumeFn(), 50);
+      }
+      return;
+    }
+    stopByPerson();
+  }
+  addEventListener('keydown', onRunKey, true);
+  addEventListener('pointerdown', onRunPointer, true);
+
+  function progressView(done, total, row) {
+    return {
+      state: 'running', main: 'Doing it for you · <b>' + done + '/' + total + '</b>' + (row ? ' · row ' + row : ''),
+      sub: 'Press <kbd>Esc</kbd> to stop', progress: done / total,
+    };
+  }
+
+  async function findTarget(step, row, ctl) {
+    const until = Date.now() + 10000;
+    let found = { el: null };
+    while (!ctl.aborted && Date.now() < until) {
+      if (row != null && step.item) {
+        found = F.findInRow(step.item, row);
+        if (found.missingRow && found.rows && Date.now() > until - 7000) return found; // the list is there, the row is not
+      } else found = { el: step.target ? F.resolve(step.target) : document.body };
+      if (found.el && F.usable(found.el)) return found;
+      await sleep(150);
+    }
+    return found.el && F.usable(found.el) ? found : { el: null };
+  }
+
+  // Does one step. Answers { status: ok | stopped | error, ... }.
+  async function execStep(msg) {
+    const ctl = beginRun(msg.runId);
+    const { step, index, total } = msg;
+    const stopped = () => ({ status: 'stopped' });
+    render(progressView(index, total, msg.rowLabel));
+    await settle(1500);
+    if (ctl.aborted) return stopped();
+
+    const found = await findTarget(step, msg.row, ctl);
+    if (ctl.aborted) return stopped();
+    const el = found.el;
+    if (!el) return { status: 'error', reason: found.missingRow ? 'Row not found' : 'Couldn’t find “' + step.label + '”', missingRow: !!found.missingRow };
+
+    el.scrollIntoView({ block: 'center', behavior: motion() ? 'smooth' : 'auto' });
+    await sleep(300);
+    if (ctl.aborted) return stopped();
+    moveCursorTo(el);
+    await sleep(520);
+    if (ctl.aborted) return stopped();
+
+    // Safety rails. Text is never read out of a private field (it could reach Claude).
+    if (step.kind === 'copy' && F.isSensitive(el)) return { status: 'error', reason: 'Won’t copy from a private field' };
+    const sensitive = step.sensitive || (step.kind !== 'copy' && step.kind !== 'click' && F.isSensitive(el));
+    const actText = step.kind === 'submit' ? (() => { const sb = el.querySelector('button[type=submit],input[type=submit],button:not([type])'); return sb ? F.textOf(sb) : ''; })() : F.textOf(el);
+    const risky = (step.kind === 'click' || step.kind === 'submit' || step.kind === 'key') && (S.isRisky(step.label) || S.isRisky(actText));
+    if (sensitive || risky) {
+      showRing(el);
+      ctl.waitingOn = { el, index, risky, byUser: false };
+      send({ type: 'needs', runId: msg.runId, index, reason: sensitive ? 'sensitive' : 'risky', label: step.label });
+      await new Promise((resolve) => {
+        ctl.mode = 'needs';
+        ctl.resumeFn = () => { ctl.resumeFn = null; ctl.mode = 'running'; resolve(); };
+        render({
+          state: 'needs',
+          main: 'Needs you · <b>' + esc(sensitive ? 'Fill “' + step.label + '”' : 'Click “' + (actText || step.label) + '” yourself') + '</b>',
+          sub: sensitive ? 'Tabmate never types here' : 'Tabmate won’t do this one',
+          progress: index / total,
+          b1: sensitive ? { label: 'Continue', on: () => ctl.resumeFn && ctl.resumeFn() } : null,
+          b2: { label: 'Stop', on: () => stopByPerson() },
+        });
+      });
+      ring.classList.remove('on');
+      ctl.waitingOn = null;
+      if (ctl.aborted) return stopped();
+      if (risky) await sleep(700); // the person clicked it; it may be loading the next page
+      if (ctl.aborted || pageGone) return stopped();
+      render(progressView(index + 1, total, msg.rowLabel));
+      return { status: 'ok', byPerson: true, rowKey: found.rowKey, cells: found.cells };
+    }
+
+    // Tell the service worker before acting: a click may unload this page.
+    await send({ type: 'progress', runId: msg.runId, acted: index });
+    if (ctl.aborted) return stopped();
+    tapCursor();
+    render(progressView(index + 1, total, msg.rowLabel));
+    const out = { status: 'ok', rowKey: found.rowKey, cells: found.cells };
+    try {
+      if (step.kind === 'click') clickLikeAPerson(el);
+      else if (step.kind === 'input' || step.kind === 'select') setValue(el, msg.value == null ? '' : String(msg.value));
+      else if (step.kind === 'check') { if (el.checked !== !!msg.value) clickLikeAPerson(el); }
+      else if (step.kind === 'submit') { el.requestSubmit ? el.requestSubmit() : el.submit(); }
+      else if (step.kind === 'key') pressKeys(step.target ? el : null, step.keys || {});
+      else if (step.kind === 'copy') {
+        selectForShow(el);
+        out.copied = norm(/^(INPUT|TEXTAREA)$/.test(el.tagName) ? el.value : el.innerText || el.textContent).slice(0, 2000);
+      }
+    } catch (e) {
+      return { status: 'error', reason: 'Couldn’t do “' + step.label + '”' };
+    }
+    await sleep(380);
+    return out;
+  }
+
+  function rowKeys(item) {
+    const rows = F.listRows(item);
+    return rows ? rows.map((r) => norm(r.innerText || r.textContent).slice(0, 120)) : null;
   }
 
   async function startFromPill(workflowId) {
     if (running) return;
-    const res = await send({ type: 'run-start', workflowId });
-    if (res && res.run) startRun(res.run, res.workflow);
+    await send({ type: 'run-start', workflowId });
   }
 
-  function startRun(run, wf) {
-    if (running || !wf || !wf.steps) return;
-    const ctl = { aborted: false, waitingOn: null, resumeFn: null, mode: 'running' };
-    running = ctl;
-    const total = wf.steps.length;
-
-    const progressView = (done) => ({
-      state: 'running', main: 'Doing it for you · <b>' + done + '/' + total + '</b>',
-      sub: 'Press <kbd>Esc</kbd> to stop', progress: done / total,
-    });
-
-    const onKey = (e) => { if (e.key === 'Escape' && e.isTrusted) { e.stopPropagation(); ctl.abort('stopped'); } };
-    const onDown = (e) => {
-      if (!e.isTrusted || inPill(e)) return;
-      if (ctl.mode === 'needs') {
-        // While waiting on the person, a click on the flagged element is them doing that step.
-        if (ctl.waitingOn && ctl.waitingOn.risky && (e.target === ctl.waitingOn.el || ctl.waitingOn.el.contains(e.target))) {
-          ctl.waitingOn.byUser = true;
-          send({ type: 'progress', index: ctl.waitingOn.index + 1 });
-          setTimeout(() => ctl.resumeFn && ctl.resumeFn(), 50);
-        }
-        return;
-      }
-      ctl.abort('stopped');
-    };
-    addEventListener('keydown', onKey, true);
-    addEventListener('pointerdown', onDown, true);
-
-    const cleanup = () => {
-      removeEventListener('keydown', onKey, true);
-      removeEventListener('pointerdown', onDown, true);
-      cursor.classList.remove('on');
-      ring.classList.remove('on');
-      running = null;
-    };
-
-    ctl.abort = (why) => {
-      if (ctl.aborted) return;
-      ctl.aborted = true;
-      if (ctl.resumeFn) ctl.resumeFn();
-      cleanup();
-      if (why === 'unload') return; // the next page picks the run back up
-      send({ type: 'run-end', status: why === 'stopped' ? 'stopped' : 'error', reason: ctl.reason || '' });
-      if (why === 'stopped') flash({ state: 'stopped', main: 'Stopped', sub: 'You have control' }, 3000);
-      else flash({ state: 'error', main: esc(ctl.reason || 'Something changed on the page'), sub: 'Stopped' }, 5200);
-    };
-
-    const waitForUser = (view) => new Promise((resolve) => {
-      ctl.mode = 'needs';
-      ctl.resumeFn = () => { ctl.resumeFn = null; ctl.mode = 'running'; resolve(); };
-      render(view);
-    });
-
-    (async () => {
-      render(progressView(run.index));
-      await sleep(650);
-      for (let i = run.index; i < total; i++) {
-        if (ctl.aborted) return;
-        const step = wf.steps[i];
-
-        // Right page? A click before this may still be loading the next page.
-        if (S.pathPattern(location.pathname) !== step.path) {
-          const until = Date.now() + 3000;
-          while (Date.now() < until && !ctl.aborted && S.pathPattern(location.pathname) !== step.path) await sleep(100);
-          if (ctl.aborted) return;
-          if (S.pathPattern(location.pathname) !== step.path) {
-            let u;
-            try { u = new URL(step.url); } catch (e) { u = null; }
-            if (!u || u.host !== location.host) { ctl.reason = 'Can’t open the next page'; return ctl.abort('error'); }
-            await send({ type: 'progress', index: i });
-            cleanup();
-            location.assign(u.href);
-            return;
-          }
-        }
-
-        // Find the element (wait for it to appear).
-        let el = null;
-        const until = Date.now() + 8000;
-        while (!ctl.aborted && Date.now() < until && !(el = resolve(step.target))) await sleep(120);
-        if (ctl.aborted) return;
-        if (!el) { ctl.reason = 'Couldn’t find “' + step.label + '”'; return ctl.abort('error'); }
-
-        el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-        await sleep(320);
-        if (ctl.aborted) return;
-        moveCursorTo(el);
-        await sleep(560);
-        if (ctl.aborted) return;
-
-        // Safety rails.
-        const sensitive = step.sensitive || isSensitive(el);
-        const actText = step.kind === 'submit' ? (() => { const sb = el.querySelector('button[type=submit],input[type=submit],button:not([type])'); return sb ? textOf(sb) : ''; })() : textOf(el);
-        const riskyText = (step.kind === 'click' || step.kind === 'submit') && (S.isRisky(step.label) || S.isRisky(actText));
-        if (sensitive || riskyText) {
-          showRing(el);
-          ctl.waitingOn = { el, index: i, risky: riskyText, byUser: false };
-          send({ type: 'needs', index: i, reason: sensitive ? 'sensitive' : 'risky', label: step.label });
-          await waitForUser({
-            state: 'needs',
-            main: 'Needs you · <b>' + esc(sensitive ? 'Fill “' + step.label + '”' : 'Click “' + (actText || step.label) + '” yourself') + '</b>',
-            sub: sensitive ? 'Tabmate never types here' : 'Tabmate won’t do this one',
-            progress: i / total,
-            b1: sensitive ? { label: 'Continue', on: () => ctl.resumeFn && ctl.resumeFn() } : null,
-            b2: { label: 'Stop', on: () => ctl.abort('stopped') },
-          });
-          ring.classList.remove('on');
-          if (ctl.aborted) return;
-          ctl.waitingOn = null;
-          if (riskyText) {
-            // The person clicked it (it may be loading the next page). Wait a beat, then go on.
-            await sleep(700);
-            if (ctl.aborted || pageGone) return;
-            render(progressView(i + 1));
-            continue;
-          }
-          await send({ type: 'progress', index: i + 1 });
-          render(progressView(i + 1));
-          continue;
-        }
-
-        await send({ type: 'progress', index: i + 1 });
-        if (ctl.aborted) return;
-        tapCursor();
-        render(progressView(i + 1));
-        try {
-          if (step.kind === 'click') { el.focus && el.focus({ preventScroll: true }); el.click(); }
-          else if (step.kind === 'input' || step.kind === 'select') setValue(el, step.value == null ? '' : step.value);
-          else if (step.kind === 'check') { if (el.checked !== !!step.value) el.click(); }
-          else if (step.kind === 'submit') { el.requestSubmit ? el.requestSubmit() : el.submit(); }
-        } catch (e) { ctl.reason = 'Couldn’t do “' + step.label + '”'; return ctl.abort('error'); }
-        await sleep(380);
-      }
-      if (ctl.aborted) return;
-      cleanup();
-      const res = await send({ type: 'run-end', status: 'done' });
-      const saved = res && res.savedMs ? S.formatSaved(res.savedMs) : '';
-      flash({ state: 'done', main: 'Done for you', sub: saved ? 'saved ' + saved : '', progress: 1 }, 3800);
-    })();
-  }
-
-  chrome.runtime.onMessage.addListener((msg, sender) => {
-    if (sender.id !== chrome.runtime.id || !msg) return;
-    if (msg.type === 'run' && msg.run && !running) startRun(msg.run, msg.workflow);
+  chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+    if (sender.id !== chrome.runtime.id || !msg) return false;
+    if (msg.type === 'exec') {
+      execStep(msg).then(reply, () => reply({ status: 'error', reason: 'Something changed on the page' }));
+      return true;
+    }
+    if (msg.type === 'ping') { reply({ ok: true, path: S.pathPattern(location.pathname), ready: document.readyState }); return false; }
+    if (msg.type === 'list-rows') { reply({ keys: rowKeys(msg.item) }); return false; }
+    if (msg.type === 'run-ended') { onRunEnded(msg); return false; }
     if (msg.type === 'refresh') hello();
+    return false;
   });
+
+  function onRunEnded(msg) {
+    const mine = running && running.runId === msg.runId;
+    if (mine) endRunHere();
+    if (!mine && !msg.wasHere) return;
+    if (msg.status === 'done') flash({ state: 'done', main: 'Done for you', sub: msg.savedMs ? 'saved ' + S.formatSaved(msg.savedMs) : '', progress: 1 }, 3800);
+    else if (msg.status === 'stopped') flash({ state: 'stopped', main: 'Stopped', sub: 'You have control' }, 3000);
+    else flash({ state: 'error', main: esc(msg.reason || 'Something changed on the page'), sub: 'Stopped' }, 5200);
+  }
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && (changes.settings || changes.workflows)) hello(true);
@@ -586,14 +710,18 @@
     enabled = !!res.enabled;
     readyWorkflows = res.ready || [];
     if (!enabled) {
-      if (running) running.abort('stopped');
+      if (running) stopByPerson();
       return hidePill();
     }
-    if (res.finished != null) return flash({ state: 'done', main: 'Done for you', sub: res.finished ? 'saved ' + S.formatSaved(res.finished) : '', progress: 1 }, 3800);
-    if (res.run && res.workflow && !running) return startRun(res.run, res.workflow);
+    if (res.finished) return onRunEnded(Object.assign({ wasHere: true }, res.finished));
+    if (res.running && !running) {
+      beginRun(res.running.runId);
+      return render(progressView(res.running.index, res.running.total, res.running.rowLabel));
+    }
     if (!running && !collapseTimer) idle();
     else if (!running && host.getAttribute('data-state') === 'idle') idle();
   }
 
+  watchDoc(document);
   hello();
 })();

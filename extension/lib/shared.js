@@ -8,6 +8,8 @@
   const MAX_STEPS = 25;
   const HISTORY_CAP = 80;
   const SESSION_GAP_MS = 20 * 60 * 1000; // a pause this long starts a new session
+  // Local ports the Claude bridge (tabmate-mcp) may listen on. Only 127.0.0.1 is ever contacted.
+  const BRIDGE_PORTS = [47821, 47822, 47823, 47824, 47825, 47826, 47827, 47828, 47829, 47830];
 
   // Buttons whose text matches this always wait for the person.
   const RISKY = /\b(pay|buy|purchase|delete|transfer|confirm payment)\b/i;
@@ -21,18 +23,6 @@
       .split('/')
       .map((seg) => (/^\d+$/.test(seg) || /^[0-9a-f-]{16,}$/i.test(seg) ? '*' : seg))
       .join('/');
-  }
-
-  // Two steps are "the same step" when kind, target and page pattern match.
-  // The typed value is not part of the signature.
-  function signature(step) {
-    return [step.kind, step.path, step.target && step.target.key].join('|');
-  }
-
-  function sameSeq(a, b) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) if (signature(a[i]) !== signature(b[i])) return false;
-    return true;
   }
 
   function isRisky(text) {
@@ -53,6 +43,7 @@
 
   root.TabmateShared = {
     UPDATES_URL, MIN_STEPS, MAX_STEPS, HISTORY_CAP, SESSION_GAP_MS,
-    RISKY, SENSITIVE_WORDS, pathPattern, signature, sameSeq, isRisky, formatSaved, siteLabel,
+    RISKY, SENSITIVE_WORDS, pathPattern, isRisky, formatSaved, siteLabel, BRIDGE_PORTS,
   };
-})(typeof self !== 'undefined' ? self : this);
+  if (typeof module === 'object' && module.exports) module.exports = root.TabmateShared;
+})(typeof self !== 'undefined' ? self : globalThis);

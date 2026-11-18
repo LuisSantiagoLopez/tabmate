@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Tabmate",
   "short_name": "Tabmate",
-  "version": "0.1.0",
-  "description": "You work once. Tabmate does it forever. Learns the tasks you repeat in your browser and does them for you.",
+  "version": "0.2.0",
+  "description": "You work once. Tabmate does it forever. Learns the tasks you repeat in your browser, even across sites, and does them for you.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -25,7 +25,8 @@
     "storage",
     "activeTab",
     "scripting",
-    "tabs"
+    "tabs",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -37,6 +38,7 @@
       ],
       "js": [
         "lib/shared.js",
+        "lib/finder.js",
         "content.js"
       ],
       "run_at": "document_idle",

@@ -1,0 +1,60 @@
+/* Coach marks for the onboarding practice (only shown when guide.js is on). */
+html.tg-on .main { padding-top: 92px; }
+html.tg-on .hint { display: none; }
+.tg { font-family: var(--sans); color: var(--teal); }
+
+.tg-bar { position: fixed; z-index: 2147483000; left: 16px; right: 16px; top: 14px; height: 56px; display: flex; align-items: center; gap: 14px;
+  padding: 0 10px 0 12px; border-radius: 18px; background: var(--paper-2); box-shadow: 0 0 0 1px var(--rule), 0 12px 28px -18px rgba(11,43,42,.5); }
+.tg-bar__tag { flex: none; font-weight: 600; font-size: 13px; padding: 6px 11px; border-radius: 999px; background: var(--teal); color: var(--lime); }
+.tg-bar__text { font-size: 16px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tg-bar__steps { display: flex; gap: 6px; flex: none; }
+.tg-bar__steps i { width: 22px; height: 6px; border-radius: 999px; background: rgba(11,43,42,.14); transition: background .3s ease; }
+.tg-bar__steps i.past { background: var(--teal); }
+.tg-bar__steps i.now { background: var(--lime); box-shadow: inset 0 0 0 1px rgba(11,43,42,.25); }
+.tg-quit { all: unset; cursor: pointer; flex: none; font-size: 13.5px; color: var(--mid); padding: 8px 12px; border-radius: 10px; }
+.tg-quit:hover { color: var(--teal); background: rgba(11,43,42,.06); }
+.tg-quit:focus-visible { outline: 2px solid var(--teal); }
+.tg-bar[data-mode="run"] { background: var(--teal); color: var(--paper); pointer-events: none; }
+.tg-bar[data-mode="run"] .tg-bar__tag { background: var(--lime); color: var(--teal); }
+.tg-bar[data-mode="run"] .tg-bar__steps, .tg-bar[data-mode="run"] .tg-quit { display: none; }
+
+.tg-ring { position: fixed; z-index: 2147482999; pointer-events: none; border-radius: 16px; opacity: 0;
+  box-shadow: 0 0 0 4px var(--lime), 0 0 0 9999px rgba(11,43,42,.12); transition: left .45s var(--ease), top .45s var(--ease), width .45s var(--ease), height .45s var(--ease), opacity .3s ease; }
+.tg-ring.on { opacity: 1; animation: tgPulse 1.8s ease-in-out infinite; }
+@keyframes tgPulse { 0%, 100% { box-shadow: 0 0 0 4px var(--lime), 0 0 0 9999px rgba(11,43,42,.12); } 50% { box-shadow: 0 0 0 9px rgba(198,255,61,.55), 0 0 0 9999px rgba(11,43,42,.12); } }
+
+.tg-tip { position: fixed; z-index: 2147483000; width: 300px; padding: 18px 20px 20px; border-radius: 20px; background: var(--teal); color: var(--paper);
+  box-shadow: 0 22px 44px -20px rgba(11,43,42,.7); opacity: 0; pointer-events: none; transition: left .45s var(--ease), top .45s var(--ease), opacity .25s ease; }
+.tg-tip.on { opacity: 1; }
+.tg-tip.tg-bump { animation: tgBump .5s var(--ease); }
+@keyframes tgBump { from { transform: scale(.94); } to { transform: none; } }
+.tg-tip::before { content: ""; position: absolute; top: calc(50% - 9px); width: 18px; height: 18px; background: var(--teal); transform: rotate(45deg); border-radius: 3px; }
+.tg-tip[data-side="right"]::before { left: -7px; }
+.tg-tip[data-side="left"]::before { right: -7px; }
+.tg-tip[data-side="below"]::before { top: -7px; left: 30px; }
+.tg-tip__h { font-family: var(--serif); font-size: 34px; line-height: 1.02; letter-spacing: -0.01em; color: #fff; }
+.tg-tip__p { margin-top: 8px; font-size: 16px; line-height: 1.4; color: rgba(243,244,241,.78); }
+
+.tg-veil { position: fixed; z-index: 2147483001; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(11,43,42,.38); backdrop-filter: blur(3px); }
+.tg-veil[hidden] { display: none; }
+.tg-card { width: min(520px, 100%); padding: 40px 36px 34px; border-radius: 28px; background: var(--paper); text-align: center; display: grid; justify-items: center; box-shadow: 0 30px 70px -30px rgba(11,43,42,.7); }
+.tg-card.tg-in { animation: tgIn .5s var(--ease) both; }
+@keyframes tgIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+.tg-card__h { font-family: var(--serif); font-weight: 400; font-size: 54px; line-height: 1; letter-spacing: -0.02em; }
+.tg-card__p { margin-top: 14px; font-size: 18px; line-height: 1.45; color: var(--mid); max-width: 32ch; }
+.tg-card__actions { margin-top: 30px; display: grid; gap: 10px; justify-items: center; }
+.tg-btn { all: unset; cursor: pointer; height: 60px; padding: 0 36px; min-width: 240px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: var(--lime); color: var(--teal); font-weight: 600; font-size: 18px; transition: transform .15s var(--ease), box-shadow .2s ease; }
+.tg-btn:hover { transform: translateY(-1px); box-shadow: 0 0 0 7px rgba(198,255,61,.35); }
+.tg-btn:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+.tg-link { all: unset; cursor: pointer; font-size: 15px; color: var(--mid); text-decoration: underline; text-underline-offset: 4px; padding: 6px 10px; border-radius: 6px; }
+.tg-link:focus-visible { outline: 2px solid var(--teal); }
+
+.tg-tick { width: 76px; height: 76px; margin-bottom: 22px; }
+.tg-tick circle { fill: var(--lime); transform-origin: center; animation: tgPop .5s var(--ease) both; }
+.tg-tick path { fill: none; stroke: var(--teal); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: tgDraw .5s .3s var(--ease) forwards; }
+@keyframes tgPop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes tgDraw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .tg-tick path { stroke-dashoffset: 0; } }
+@media (min-width: 721px) { .tg-bar { left: 226px; } }
+@media (max-width: 720px) { .tg-bar__steps { display: none; } .tg-tip { width: 260px; } }

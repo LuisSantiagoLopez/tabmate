@@ -35,6 +35,12 @@
     return '~' + Math.round(s / 60) + ' min';
   }
 
+  // The one command that connects Claude. tabmate-mcp is installed straight from GitHub (it is not on npm).
+  const MCP_PACKAGE = 'github:LuisSantiagoLopez/tabmate-mcp';
+  function claudeCommand(token) {
+    return 'npx -y ' + MCP_PACKAGE + ' install --token ' + (token || '');
+  }
+
   function siteLabel(site) {
     if (!site) return '';
     if (/^[a-p]{32}$/.test(site)) return 'Tabmate sandbox';
@@ -43,7 +49,7 @@
 
   root.TabmateShared = {
     UPDATES_URL, MIN_STEPS, MAX_STEPS, HISTORY_CAP, SESSION_GAP_MS,
-    RISKY, SENSITIVE_WORDS, pathPattern, isRisky, formatSaved, siteLabel, BRIDGE_PORTS,
+    RISKY, SENSITIVE_WORDS, pathPattern, isRisky, formatSaved, siteLabel, BRIDGE_PORTS, MCP_PACKAGE, claudeCommand,
   };
   if (typeof module === 'object' && module.exports) module.exports = root.TabmateShared;
 })(typeof self !== 'undefined' ? self : globalThis);

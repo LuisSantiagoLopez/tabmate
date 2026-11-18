@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Tabmate",
   "short_name": "Tabmate",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "You work once. Tabmate does it forever. Learns the tasks you repeat in your browser, even across sites, and does them for you.",
   "icons": {
     "16": "icons/icon-16.png",

@@ -124,3 +124,12 @@ test('link times out a silent connection', async () => {
   assert.equal(code, 4001);
   link.close();
 });
+
+test('run through npx, Claude is told to start the same GitHub package (tabmate-mcp is not on npm)', () => {
+  const { launchCommand } = require('../../mcp/lib/install');
+  const version = require('../../mcp/package.json').version;
+  const viaNpx = launchCommand('/Users/x/.npm/_npx/abc123/node_modules/tabmate-mcp/bin/tabmate-mcp.js');
+  assert.deepEqual(viaNpx, { command: 'npx', args: ['-y', 'github:LuisSantiagoLopez/tabmate-mcp#v' + version] });
+  const fromClone = launchCommand('/repo/mcp/bin/tabmate-mcp.js');
+  assert.equal(fromClone.command, process.execPath);
+});

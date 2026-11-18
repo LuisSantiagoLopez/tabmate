@@ -40,43 +40,60 @@
   const CSS = `
   :host { all: initial; }
   * { box-sizing: border-box; }
-  .wrap { position: fixed; left: 0; right: 0; bottom: 18px; display: flex; justify-content: center; pointer-events: none; }
+  .wrap { position: fixed; left: 0; right: 0; bottom: 20px; display: flex; justify-content: center; pointer-events: none; z-index: 2147483647;
+    transition: transform .34s cubic-bezier(.32,.72,0,1); }
+  .wrap.up { bottom: auto; top: 20px; }
   .pill {
-    pointer-events: auto; position: relative; display: flex; align-items: center; gap: 9px;
-    height: 38px; padding: 0 14px 0 12px; border-radius: 999px; overflow: hidden; white-space: nowrap;
-    background: #0B2B2A; color: #F3F4F1;
+    --bg: rgba(10, 38, 36, .86); --fg: #F3F4F1; --soft: rgba(243,244,241,.58); --line: rgba(255,255,255,.09);
+    --accent: #C6FF3D; --on-accent: #0B2B2A; --chip: rgba(243,244,241,.12);
+    pointer-events: auto; position: relative; display: flex; align-items: center;
+    height: 40px; padding: 0 8px 0 13px; border-radius: 13px; overflow: hidden; white-space: nowrap;
+    background: var(--bg); color: var(--fg);
+    -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
     font: 500 13px/1 "Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    letter-spacing: -0.005em;
-    box-shadow: 0 0 0 1px rgba(198,255,61,.10), 0 10px 30px -10px rgba(5,20,20,.55), 0 2px 6px rgba(5,20,20,.25);
-    transition: width .46s cubic-bezier(.2,.8,.2,1), transform .46s cubic-bezier(.2,.8,.2,1), opacity .3s ease;
-    transform: translateY(0); opacity: 1;
+    letter-spacing: -0.006em; font-feature-settings: "tnum" 1;
+    box-shadow: inset 0 0 0 .5px var(--line), inset 0 1px 0 rgba(255,255,255,.06), 0 14px 34px -14px rgba(4,16,15,.55), 0 2px 6px -1px rgba(4,16,15,.22);
+    transition: width .34s cubic-bezier(.32,.72,0,1), transform .32s cubic-bezier(.34,1.36,.64,1), opacity .2s ease, background .3s ease;
+    transform: none; opacity: 1;
   }
-  .pill.hidden { transform: translateY(70px); opacity: 0; pointer-events: none; }
-  .pill[data-state="idle"] { opacity: .88; }
+  .pill[data-theme="light"] {
+    --bg: rgba(251, 251, 248, .84); --fg: #0B2B2A; --soft: rgba(11,43,42,.55); --line: rgba(11,43,42,.10);
+    --accent: #0B2B2A; --on-accent: #C6FF3D; --chip: rgba(11,43,42,.07);
+    box-shadow: inset 0 0 0 .5px var(--line), 0 14px 34px -14px rgba(0,0,0,.6), 0 2px 6px -1px rgba(0,0,0,.3);
+  }
+  .pill.hidden { transform: translateY(14px) scale(.96); opacity: 0; pointer-events: none; }
+  .wrap.up .pill.hidden { transform: translateY(-14px) scale(.96); }
+  .pill[data-state="idle"] { opacity: .74; padding-right: 13px; }
+  .pill[data-state="idle"]:has(button:not([hidden])) { padding-right: 6px; }
   .pill[data-state="idle"]:hover { opacity: 1; }
-  .inner { display: flex; align-items: center; gap: 9px; }
-  .mark { width: 18px; height: 13px; color: #F3F4F1; flex: none; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: #C6FF3D; flex: none; box-shadow: 0 0 0 0 rgba(198,255,61,.6); }
-  .pill[data-state="idle"] .dot { animation: pulse 2.4s ease-in-out infinite; }
+  .inner { display: flex; align-items: center; gap: 9px; flex: none; }
+  .mark { width: 17px; height: 12px; color: var(--fg); flex: none; opacity: .92; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #C6FF3D; flex: none; box-shadow: 0 0 0 0 rgba(198,255,61,.6); }
+  .pill[data-theme="light"] .dot { background: #5BBF2A; }
+  .pill[data-state="idle"] .dot { animation: pulse 2.8s ease-in-out infinite; }
+  .pill[data-state="running"] .dot { animation: pulse 1.2s ease-in-out infinite; }
   .pill[data-state="needs"] .dot { background: #FFB547; }
   .pill[data-state="error"] .dot, .pill[data-state="stopped"] .dot { background: #9AA6A3; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(198,255,61,.55); } 70% { box-shadow: 0 0 0 7px rgba(198,255,61,0); } 100% { box-shadow: 0 0 0 0 rgba(198,255,61,0); } }
-  .text { display: flex; align-items: baseline; gap: 8px; transition: opacity .22s ease; }
-  .text.swap { opacity: 0; }
-  .main b { font-weight: 600; color: #fff; }
-  .sub { color: rgba(243,244,241,.55); font-weight: 400; font-size: 12px; }
-  .sub kbd { font: inherit; padding: 1px 5px; border-radius: 5px; background: rgba(243,244,241,.12); color: #F3F4F1; }
+  .pill[data-state="done"] .dot, .pill[data-state="learned"] .dot { width: 14px; height: 14px; background: #C6FF3D url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M4 7.2l2 2 4-4.4' fill='none' stroke='%230B2B2A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat; animation: pop .34s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(198,255,61,.5); } 70% { box-shadow: 0 0 0 6px rgba(198,255,61,0); } 100% { box-shadow: 0 0 0 0 rgba(198,255,61,0); } }
+  @keyframes pop { from { transform: scale(.3); } to { transform: none; } }
+  .text { display: flex; align-items: baseline; gap: 7px; transition: opacity .16s ease, transform .2s ease; }
+  .text.swap { opacity: 0; transform: translateY(3px); }
+  .main b { font-weight: 600; color: var(--fg); }
+  .sub { color: var(--soft); font-weight: 400; font-size: 12.5px; }
+  .sub kbd { font: 500 11px/1 "Inter Tight", ui-sans-serif, system-ui, sans-serif; padding: 2px 5px; border-radius: 5px; background: var(--chip); color: var(--fg); }
   button {
-    all: unset; cursor: pointer; font: 600 12px/1 "Inter Tight", ui-sans-serif, system-ui, sans-serif;
-    padding: 7px 11px; border-radius: 999px; background: #C6FF3D; color: #0B2B2A; flex: none;
-    transition: transform .15s ease, background .15s ease;
+    all: unset; cursor: pointer; font: 600 12.5px/1 "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+    height: 28px; padding: 0 11px; display: inline-flex; align-items: center; border-radius: 9px; background: var(--accent); color: var(--on-accent); flex: none;
+    transition: transform .15s ease, background .15s ease, filter .15s ease;
   }
-  button:hover { transform: translateY(-1px); }
+  button:hover { filter: brightness(1.06); }
+  button:active { transform: scale(.96); }
   button:focus-visible { outline: 2px solid #C6FF3D; outline-offset: 2px; }
-  button.ghost { background: rgba(243,244,241,.12); color: #F3F4F1; }
+  button.ghost { background: var(--chip); color: var(--fg); }
   button[hidden] { display: none; }
-  .bar { position: absolute; left: 14px; right: 14px; bottom: 4px; height: 2px; border-radius: 2px; background: rgba(243,244,241,.10); opacity: 0; transition: opacity .3s ease; }
-  .bar i { display: block; height: 100%; width: 0; border-radius: 2px; background: #C6FF3D; transition: width .5s cubic-bezier(.2,.8,.2,1); }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--chip); opacity: 0; transition: opacity .3s ease; }
+  .bar i { display: block; height: 100%; width: 0; background: #C6FF3D; box-shadow: 0 0 8px rgba(198,255,61,.7); transition: width .45s cubic-bezier(.32,.72,0,1); }
   .pill[data-state="running"] .bar, .pill[data-state="needs"] .bar { opacity: 1; }
   .cursor { position: fixed; left: 0; top: 0; width: 24px; height: 24px; pointer-events: none; opacity: 0;
     transform: translate(-40px,-40px); transition: transform .55s cubic-bezier(.3,.7,.2,1), opacity .25s ease;
@@ -89,8 +106,8 @@
   .ring { position: fixed; pointer-events: none; border-radius: 8px; box-shadow: 0 0 0 2px #FFB547, 0 0 0 6px rgba(255,181,71,.25); opacity: 0; transition: opacity .25s ease; }
   .ring.on { opacity: 1; }
   @media (prefers-reduced-motion: reduce) {
-    .pill, .text, .bar i, .cursor { transition: none !important; }
-    .pill[data-state="idle"] .dot { animation: none; }
+    .pill, .text, .bar i, .cursor, .wrap { transition: none !important; }
+    .pill .dot { animation: none !important; }
   }`;
 
   const host = document.createElement('tabmate-pill');
@@ -114,6 +131,9 @@
   b1.addEventListener('click', (e) => { if (e.isTrusted && b1Handler) b1Handler(); });
   b2.addEventListener('click', (e) => { if (e.isTrusted && b2Handler) b2Handler(); });
 
+  // Keep the pill exactly as wide as what it shows (text swaps, buttons, the check mark).
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => fit()).observe(inner);
+
   function mount() {
     if (!host.isConnected) (document.body || document.documentElement).appendChild(host);
   }
@@ -123,7 +143,28 @@
   }
 
   function fit() {
-    pill.style.width = Math.ceil(inner.scrollWidth + 28) + 'px';
+    const cs = getComputedStyle(pill);
+    pill.style.width = Math.ceil(inner.scrollWidth + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)) + 'px';
+  }
+
+  // Light glass on dark pages, dark glass on light pages.
+  function pageIsDark() {
+    for (const el of [document.body, document.documentElement]) {
+      if (!el) continue;
+      const m = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+      if (!m || (m[3] !== undefined && Number(m[3]) < 0.5)) continue;
+      const [r, g, b] = m.map(Number);
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b < 110;
+    }
+    return false;
+  }
+
+  // Never sit on top of the thing Tabmate is about to click: move to the top edge instead.
+  const wrapEl = () => shadow.querySelector('.wrap');
+  function avoid(el) {
+    const r = el ? viewRect(el) : null;
+    const below = innerHeight - 20 - 40 - 16; // pill area at the bottom, with a margin
+    wrapEl().classList.toggle('up', !!r && r.top + r.height > below);
   }
 
   // view: { state, main (html), sub (html), b1: {label, on}, b2: {label, on}, progress: 0..1 }
@@ -132,6 +173,7 @@
     mount();
     host.setAttribute('data-state', view.state);
     pill.setAttribute('data-state', view.state);
+    pill.dataset.theme = pageIsDark() ? 'light' : 'dark';
     pill.classList.remove('hidden');
     const apply = () => {
       mainEl.innerHTML = view.main || '';
@@ -157,6 +199,7 @@
   }
 
   function idle() {
+    if (!running) wrapEl().classList.remove('up');
     if (!enabled) return hidePill();
     const ready = readyWorkflows[0];
     if (ready) {
@@ -181,8 +224,9 @@
   const CLICKABLE = 'a[href],button,[role=button],[role=link],[role=tab],[role=menuitem],[role=option],[role=switch],[role=checkbox],[role=radio],input[type=submit],input[type=button],input[type=reset],summary';
   const COPY_PASTE_KEYS = /^[cvxazy]$/i;
 
+  // Tabmate's own UI (the pill, and coach marks marked data-tabmate-ui) is never recorded.
   function inPill(e) {
-    return e.composedPath && e.composedPath().includes(host);
+    return !!e.composedPath && e.composedPath().some((n) => n === host || (n.nodeType === 1 && n.hasAttribute('data-tabmate-ui')));
   }
   function canRecord(e) {
     return enabled && !running && e.isTrusted && !inPill(e);
@@ -215,7 +259,14 @@
     const res = await send({ type: 'step', step });
     if (!res || !res.learned) return;
     readyWorkflows = res.ready || readyWorkflows;
-    flash({ state: 'learned', main: 'Learned: <b>' + esc(res.learned.name) + '</b>', sub: res.learned.steps + ' steps' }, 4600);
+    const wf = res.learned;
+    flash({ state: 'learned', main: 'Learned: <b>' + esc(wf.name) + '</b>', sub: wf.steps + ' steps', b2: { label: 'Undo', on: () => undoLearned(wf) } }, 6000);
+  }
+
+  async function undoLearned(wf) {
+    const res = await send({ type: 'undo-learned', workflowId: wf.id });
+    readyWorkflows = readyWorkflows.filter((w) => w.id !== wf.id);
+    flash({ state: 'stopped', main: 'Forgot it', sub: 'I won’t do this one' }, 2600);
   }
 
   // Text fields typed into but not yet recorded.
@@ -412,6 +463,7 @@
   const motion = () => !matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function moveCursorTo(el) {
+    avoid(el);
     const r = viewRect(el);
     cursor.classList.add('on');
     cursor.style.transform = `translate(${Math.round(r.left + Math.min(r.width / 2, 40)) - 4}px, ${Math.round(r.top + r.height / 2) - 3}px)`;

@@ -44,11 +44,11 @@ function serveDir(dir, mounts = {}) {
   });
 }
 
-async function launch({ allow = () => false } = {}) {
-  const userDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tabmate-test-'));
+async function launch({ allow = () => false, keepWelcome = false, userDir: reuse = null } = {}) {
+  const userDir = reuse || fs.mkdtempSync(path.join(os.tmpdir(), 'tabmate-test-'));
   // No "Save password?" bubble: in headless Chrome it silently steals keyboard focus.
   fs.mkdirSync(path.join(userDir, 'Default'), { recursive: true });
-  fs.writeFileSync(path.join(userDir, 'Default', 'Preferences'), JSON.stringify({ credentials_enable_service: false, profile: { password_manager_enabled: false } }));
+  if (!reuse) fs.writeFileSync(path.join(userDir, 'Default', 'Preferences'), JSON.stringify({ credentials_enable_service: false, profile: { password_manager_enabled: false } }));
   const ctx = await chromium.launchPersistentContext(userDir, {
     executablePath: CHROME,
     headless: !HEADED,
@@ -64,18 +64,19 @@ async function launch({ allow = () => false } = {}) {
   };
   ctx.on('page', watchPage);
   ctx.pages().forEach(watchPage);
-  const sw = ctx.serviceWorkers()[0] || (await ctx.waitForEvent('serviceworker'));
+  const sw = ctx.serviceWorkers().find((w) => w.url().startsWith('chrome-extension://')) || (await ctx.waitForEvent('serviceworker'));
   sw.on('console', (m) => { if (m.type() === 'error') errors.push('service worker :: ' + m.text()); });
   const extId = new URL(sw.url()).host;
   // Close the welcome tab so it doesn't get in the way.
   await sleep(600);
-  for (const p of ctx.pages()) if (p.url().includes('welcome.html')) await p.close();
+  if (!keepWelcome) for (const p of ctx.pages()) if (p.url().includes('welcome.html')) await p.close();
   return {
     ctx, sw, extId, external, errors,
     X: (p) => `chrome-extension://${extId}/${p}`,
     store: () => sw.evaluate(() => chrome.storage.local.get(null)),
     sess: () => sw.evaluate(() => chrome.storage.session.get(null)),
-    close: async () => { await ctx.close(); fs.rmSync(userDir, { recursive: true, force: true }); },
+    userDir,
+    close: async () => { await ctx.close(); if (!reuse) fs.rmSync(userDir, { recursive: true, force: true }); },
   };
 }
 
@@ -133,5 +134,15 @@ async function typeInto(page, sel, text) {
   await page.keyboard.press('Tab');
   await sleep(120);
 }
+// Real keyboard selection on a focused <select> (trusted change event), like a person typing ahead.
+async function choose(page, sel, value) {
+  await page.focus(sel);
+  const label = await page.$eval(sel, (s, v) => [...s.options].find((o) => o.value === v).text, value);
+  await page.keyboard.type(label, { delay: 15 });
+  await page.keyboard.press('Tab');
+  await sleep(120);
+  const got = await page.$eval(sel, (s) => s.value);
+  if (got !== value) throw new Error('select failed: ' + sel + ' = ' + got);
+}
 
-module.exports = { ROOT, EXT, SHOTS, HEADED, sleep, makeChecker, serveDir, launch, waitFor, pillState, pillText, pillClick, typeInto };
+module.exports = { ROOT, EXT, SHOTS, HEADED, sleep, makeChecker, serveDir, launch, waitFor, pillState, pillText, pillClick, typeInto, choose };

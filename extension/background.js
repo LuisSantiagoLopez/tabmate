@@ -211,6 +211,32 @@ async function onRunStartFromPill(msg, tabId, site) {
   return r.error ? { error: r.error } : { ok: true };
 }
 
+// The onboarding practice: "Watch me do it" runs the sandbox workflow just learned, in the same tab.
+// Only the sandbox pages can ask, and only for a workflow that lives on the sandbox.
+async function onGuideRun(tabId, site) {
+  const { settings, workflows, log } = await getAll();
+  const wf = workflows.filter((w) => w.enabled && w.steps[0] && w.steps[0].site === site).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+  if (!wf || !watching(settings, site)) return { error: 'none' };
+  const r = startRun(wf, { via: 'guide', tabId });
+  if (r.error) return { error: r.error };
+  addLog(log, { type: 'start', site, workflowId: wf.id, text: 'Started: ' + wf.name });
+  await local.set({ log });
+  return { ok: true, runId: r.runId };
+}
+
+// "Undo" on the Learned toast: forget a workflow learned a moment ago on this same site, and the steps that taught it.
+async function onUndoLearned(msg, tabId, site) {
+  const all = await getAll();
+  const wf = all.workflows.find((w) => w.id === msg.workflowId);
+  if (!wf || wf.site !== site || Date.now() - (wf.updatedAt || 0) > 5 * 60 * 1000) return { ready: readyFor(all.workflows, site, '') };
+  all.workflows = all.workflows.filter((w) => w.id !== wf.id);
+  all.history.length = 0;
+  addLog(all.log, { type: 'deleted', site, workflowId: wf.id, text: 'Undid: ' + wf.name });
+  await local.set({ workflows: all.workflows, history: all.history, log: all.log });
+  bridgeChanged();
+  return { ready: [] };
+}
+
 function onProgress(msg) {
   if (active && active.run.id === msg.runId && Number.isFinite(msg.acted)) {
     active.run.acted = Math.max(active.run.acted, msg.acted);
@@ -468,7 +494,7 @@ async function finishRun(a, status, reason, note) {
       if (run.rowsDone || !wf.loop) wf.runs += 1;
       wf.savedMs += saved;
       res.savedMs = saved;
-      addLog(log, { type: 'done', site: wf.site, workflowId: wf.id, text: (note ? note + ': ' : 'Did it for you: ') + wf.name + (wf.loop ? ' · ' + run.rowsDone + ' rows' : '') + ' · saved ' + S.formatSaved(saved) });
+      addLog(log, { type: 'done', site: wf.site, workflowId: wf.id, savedMs: saved, name: wf.name, text: (note ? note + ': ' : 'Did it for you: ') + wf.name + (wf.loop ? ' · ' + run.rowsDone + ' rows' : '') + ' · saved ' + S.formatSaved(saved) });
     } else if (status === 'stopped') {
       addLog(log, { type: 'stopped', site: wf.site, workflowId: wf.id, text: 'You stopped: ' + wf.name });
     } else {
@@ -576,7 +602,7 @@ async function runForClaude(params) {
 }
 
 /* ---------- message routing ---------- */
-const CONTENT = { hello: onHello, step: onStep, 'run-start': onRunStartFromPill, needs: onNeeds };
+const CONTENT = { hello: onHello, step: onStep, 'run-start': onRunStartFromPill, needs: onNeeds, 'undo-learned': onUndoLearned };
 const ADMIN_TYPES = ['set-paused', 'set-site-watch', 'set-bridge', 'toggle-workflow', 'delete-workflow', 'clear-log', 'run-now', 'stop-run'];
 const EXT_ORIGIN = 'chrome-extension://' + chrome.runtime.id + '/';
 
@@ -584,7 +610,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || typeof msg.type !== 'string' || sender.id !== chrome.runtime.id) return false;
   const fromExtPage = (sender.url || '').startsWith(EXT_ORIGIN) && !/\/sandbox\//.test(sender.url);
   let job;
-  if (sender.tab && (CONTENT[msg.type] || ['progress', 'run-stop', 'open-updates'].includes(msg.type))) {
+  if (sender.tab && (CONTENT[msg.type] || ['progress', 'run-stop', 'open-updates', 'guide-run'].includes(msg.type))) {
     const tabId = sender.tab.id;
     const site = siteOf(sender.url || sender.tab.url || ''); // never trust a site name sent in the message
     if (!site) return false;
@@ -595,6 +621,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return false;
     }
     if (msg.type === 'progress') { sendResponse(onProgress(msg)); return false; }
+    if (msg.type === 'guide-run') {
+      if (!/\/sandbox\//.test(sender.url || '') || !(sender.url || '').startsWith(EXT_ORIGIN)) return false;
+      job = serial(() => onGuideRun(tabId, site));
+      job.then((r) => sendResponse(r || {}), () => sendResponse({}));
+      return true;
+    }
     job = serial(() => CONTENT[msg.type](msg, tabId, site));
   } else if (ADMIN_TYPES.includes(msg.type) && fromExtPage) {
     job = serial(() => onAdmin(msg));

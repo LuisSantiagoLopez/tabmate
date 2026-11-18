@@ -1,6 +1,6 @@
 {
   "name": "tabmate-extension",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Tabmate Chrome extension: learns the tasks you repeat in the browser and does them for you.",
   "license": "MIT",

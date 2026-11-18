@@ -11,13 +11,15 @@ Free. Open source (MIT). Everything stays on your computer.
 
 This is an early test. It will break on some sites. Try it on your boring stuff and [tell us what breaks](../../issues).
 
-## Install (about a minute)
+## Install (about 2 minutes)
 
-1. **Get it.** Download [tabmate-extension.zip](https://trytabmate.com/download/tabmate-extension.zip) and unzip it. Or clone this repo.
-2. **Open `chrome://extensions`** and turn on **Developer mode** (top right).
-3. Click **Load unpacked** and pick the `tabmate-extension` folder (or `extension/` if you cloned).
+The easiest way is the step-by-step guide at **[trytabmate.com/download](https://trytabmate.com/download)**. It shows every click. Coming soon to the Chrome Web Store (1-click install).
 
-A welcome page opens with a fake CRM to try it on. Do the export task twice. Start it a third time and watch.
+1. **Get it.** Download [tabmate.zip](https://trytabmate.com/download/tabmate.zip). Unzip it: double-click it on a Mac, or right-click and pick **Extract All** on Windows. You get a folder called `tabmate`. Or clone this repo.
+2. **Open `chrome://extensions`** (copy it and paste it in the address bar) and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and pick the `tabmate` folder (or `extension/` if you cloned).
+
+A welcome page opens. It walks you through a short practice: you do a small task twice, Tabmate learns it, then does it by itself while you watch.
 
 ## What it does
 
@@ -26,6 +28,7 @@ A welcome page opens with a fake CRM to try it on. Do the export task twice. Sta
 - **Fills in the right values.** If what you typed changed between your two runs, Tabmate finds where it came from: text you copied, or a cell in the row you were on. Next time it reads the fresh value from the page instead of retyping an old one.
 - **Works down a list.** If you handled a list one row at a time, Tabmate does every new row for you, and remembers which rows are done.
 - **Takes over on its own.** Start the task (the first 1 or 2 steps) and Tabmate finishes it. A lime cursor shows each click before it happens.
+- **Calm about it.** A small glass pill at the bottom says what it is doing. "Learned" comes with an **Undo**. When it finishes, it says how much time it saved and gets out of the way. The toolbar menu shows what it did for you today.
 - **Copes with messy pages.** It finds things by role, label, placeholder, nearby text and position, not just ids. It waits for pages that render late, and works with React and Vue forms, custom dropdowns, rich text boxes, shadow DOM, same-origin iframes, and keyboard shortcuts.
 
 ## You stay in charge
@@ -46,7 +49,7 @@ Every website, an MCP server. Each workflow Tabmate learned can be a tool for Cl
 2. Paste it in Terminal and press Enter. It looks like this:
 
    ```bash
-   npx tabmate-mcp install --token <your token>
+   npx -y github:LuisSantiagoLopez/tabmate-mcp install --token <your token>
    ```
 
 3. Restart Claude Desktop. The popup says **Connected to Claude**.
@@ -59,7 +62,7 @@ Now ask Claude things like "add the new leads to the CRM". Claude sees:
 
 Claude runs them in your Chrome, with the same safety rules. Passwords, card fields and pay buttons still wait for you.
 
-What `install` does: it adds a `tabmate` entry to Claude Desktop's and Claude Code's MCP config. It backs up each file first and never touches your other servers. `npx tabmate-mcp uninstall` removes it.
+What `install` does: it adds a `tabmate` entry to Claude Desktop's and Claude Code's MCP config. It backs up each file first and never touches your other servers. `npx -y github:LuisSantiagoLopez/tabmate-mcp uninstall` removes it.
 
 How it stays private:
 
@@ -68,7 +71,7 @@ How it stays private:
 - The server refuses web pages and anything that is not the extension.
 - It is off until you click Copy (or turn on "Claude can run my workflows").
 
-The server lives in [`mcp/`](mcp/). Until it is on npm, run it from a clone: `node mcp/bin/tabmate-mcp.js install --token <token>`.
+The server lives in [`mcp/`](mcp/) and is published as its own repo, [tabmate-mcp](https://github.com/LuisSantiagoLopez/tabmate-mcp). `npx` installs it straight from GitHub (it is not on npm). You need Node.js 18 or newer. From a clone you can also run `node mcp/bin/tabmate-mcp.js install --token <token>`.
 
 ## Privacy
 
@@ -88,8 +91,9 @@ Permissions, and why:
 
 ```bash
 npm install
-npm test              # everything local: unit, core, cross-site + Claude, React SPA
-npm run test:real     # real public sites (needs internet)
+npm test              # everything local: unit, core, cross-site + Claude, React SPA, a work day, onboarding
+npm run test:real     # real public sites (needs internet, 3 tries each)
+sh scripts/live-check.sh  # download from trytabmate.com, unzip, and run all of the above on that folder
 npm run test:headed   # watch it happen
 ```
 
@@ -100,6 +104,9 @@ The tests load the extension into Chromium and use real mouse, keyboard and clip
 - an MCP client calling `run_workflow` through `tabmate-mcp`, including opening a closed tab
 - a React app with random ids, late rendering, a custom dropdown, an iframe, shadow DOM, rich text and Ctrl+Enter
 - Esc and click to stop, card/CVV/password never stored, "Needs you" pauses, pause and per-site block
+- a simulated work day: three sites, two repeated tasks mixed with normal browsing, an Undo, a browser restart at lunch, then Tabmate finishing both tasks by itself and the "Today" summary in the popup
+- a first-time user going through the onboarding exactly as a new person would (welcome, practice twice, "I learned it!", Tabmate does it alone, pin, Claude, done)
+- the guided installer at trytabmate.com/download on desktop (1440 wide) and a phone (390 wide)
 - no network calls and no console errors
 - unit tests for the learning logic, the config installer and the link security
 

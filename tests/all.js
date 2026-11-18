@@ -1,4 +1,4 @@
-// Runs every local suite: unit tests, the core extension suite, cross-site + Claude bridge, and the React SPA.
+// Runs every local suite: unit tests, the core extension suite, cross-site + Claude bridge, the React SPA and the first-time user onboarding.
 // Real public sites are separate (they need the internet): npm run test:real
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -11,6 +11,8 @@ const suites = [
   { name: 'core', cmd: [process.execPath, 'tests/run.js', ...extra], parse: tally },
   { name: 'cross-site + Claude bridge', cmd: [process.execPath, 'tests/cross-site.js', ...extra], parse: tally },
   { name: 'react SPA', cmd: [process.execPath, 'tests/spa.js', ...extra], parse: tally },
+  { name: 'a simulated work day (with a restart)', cmd: [process.execPath, 'tests/day.js', ...extra], parse: tally },
+  { name: 'first-time user onboarding', cmd: [process.execPath, 'tests/onboarding.js', ...extra], parse: tally },
 ];
 
 function tally(out) {

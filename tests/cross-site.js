@@ -110,7 +110,7 @@ module.exports = async function crossSite() {
     await pop.waitForSelector('.flow');
     const route = await pop.$eval('.flow__route', (r) => ({ sites: r.dataset.sites, text: r.textContent }));
     check('popup shows the route site A → site B and "each new row"', route.sites === '2' && route.text.includes('→') && /each new row/.test(route.text), route.text);
-    check('popup shows "Not connected" and the setup command with a token', /Not connected/.test(await pop.textContent('#claudeState')) && /^npx tabmate-mcp install --token [a-f0-9]{48}$/.test(await pop.textContent('#claudeCmd')), await pop.textContent('#claudeCmd'));
+    check('popup shows "Not connected" and the setup command with a token', /Not connected/.test(await pop.textContent('#claudeState')) && /^npx -y github:LuisSantiagoLopez\/tabmate-mcp install --token [a-f0-9]{48}$/.test(await pop.textContent('#claudeCmd')), await pop.textContent('#claudeCmd'));
     check('bridge is off by default (no local connections before you ask)', !bridgeHits.length && !(await store()).settings.bridge, bridgeHits.length + ' bridge requests');
 
     /* ---------- MCP end to end ---------- */

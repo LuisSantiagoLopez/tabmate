@@ -138,22 +138,30 @@ const CASES = [
 
 (async () => {
   const out = [];
+  // Public sites can be slow or flaky: each case gets up to 3 tries in a fresh browser.
+  const TRIES = Number(process.env.TABMATE_REAL_TRIES || 3);
   for (const c of CASES) {
     console.log('\n' + c.name);
-    const t = await H.launch({ allow: () => true });
     let r;
-    try {
-      const p = await t.ctx.newPage();
-      r = await c.run(p, t.store);
-      await p.screenshot({ path: path.join(H.SHOTS, 'real-' + c.name.split(':')[0].replace(/[^a-z0-9]+/gi, '-') + '-' + out.length + '.png') }).catch(() => {});
-    } catch (e) {
-      r = { ok: false, detail: 'crashed: ' + e.message.split('\n')[0] };
+    let tries = 0;
+    while (tries < TRIES) {
+      tries++;
+      const t = await H.launch({ allow: () => true });
+      try {
+        const p = await t.ctx.newPage();
+        r = await c.run(p, t.store);
+        await p.screenshot({ path: path.join(H.SHOTS, 'real-' + c.name.split(':')[0].replace(/[^a-z0-9]+/gi, '-') + '-' + out.length + '.png') }).catch(() => {});
+      } catch (e) {
+        r = { ok: false, detail: 'crashed: ' + e.message.split('\n')[0] };
+      }
+      const swErrors = t.errors.filter((e) => e.startsWith('service worker'));
+      if (swErrors.length) r = { ok: false, detail: r.detail + ' · extension errors: ' + swErrors.join(' | ') };
+      await t.close();
+      if (r.ok) break;
+      console.log('  try ' + tries + ' failed: ' + r.detail);
     }
-    const swErrors = t.errors.filter((e) => e.startsWith('service worker'));
-    if (swErrors.length) r = { ok: false, detail: r.detail + ' · extension errors: ' + swErrors.join(' | ') };
-    console.log((r.ok ? '  PASS ' : '  FAIL ') + r.detail);
-    out.push({ site: c.name, ok: r.ok, detail: r.detail });
-    await t.close();
+    console.log((r.ok ? '  PASS ' : '  FAIL ') + r.detail + (tries > 1 ? ' (try ' + tries + ')' : ''));
+    out.push({ site: c.name, ok: r.ok, tries, detail: r.detail });
   }
   const passed = out.filter((x) => x.ok).length;
   console.log(`\n${passed}/${out.length} real sites passed`);

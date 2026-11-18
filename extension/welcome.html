@@ -8,42 +8,94 @@
 <link rel="stylesheet" href="welcome.css">
 </head>
 <body>
-<main class="w">
-  <header class="w__top">
-    <svg class="mark" viewBox="135 249 759 523" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" d="M145 450H426C488 450 482 372 546 372H630C693 372 685 448 750 448H804C851 448 884 481 884 529V681C884 730 853 762 804 762H339C272 762 225 715 225 647V313C225 283 247 259 276 259C305 259 327 283 327 313V450"/></svg>
-    <span class="serif">Tabmate</span>
-  </header>
+<header class="top">
+  <span class="brand"><svg class="mark" viewBox="135 249 759 523" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" d="M145 450H426C488 450 482 372 546 372H630C693 372 685 448 750 448H804C851 448 884 481 884 529V681C884 730 853 762 804 762H339C272 762 225 715 225 647V313C225 283 247 259 276 259C305 259 327 283 327 313V450"/></svg><span class="serif">Tabmate</span></span>
+  <ol class="dots" id="dots" aria-label="Setup progress"></ol>
+  <span class="top__end"></span>
+</header>
 
-  <h1 class="serif w__h">You work once.<br>Tabmate does it forever.</h1>
-  <p class="w__lede">Tabmate is now watching. It learns the tasks you repeat in the browser and then does them for you. Here is how to see it in under a minute.</p>
+<main class="stage" id="stage">
 
-  <ol class="steps">
-    <li>
-      <p class="steps__t">Do a task once</p>
-      <p>In the sandbox CRM: pick a status, click Export, choose a format, name the file, click Create export.</p>
-    </li>
-    <li>
-      <p class="steps__t">Do it again</p>
-      <p>Same steps. Halfway through, the pill at the bottom says <em>Learned</em>.</p>
-    </li>
-    <li>
-      <p class="steps__t">Start it a third time</p>
-      <p>Pick a status and click Export. Tabmate takes over and finishes it. Press Esc any time to stop.</p>
-    </li>
-  </ol>
-
-  <div class="w__cta">
-    <a class="btn btn--teal" id="openSandbox" href="sandbox/crm.html">Open the sandbox</a>
-    <span class="hint">Pin Tabmate from the puzzle icon in the toolbar to see what it learned.</span>
-  </div>
-
-  <section class="facts">
-    <div><p class="facts__t">Stays on your computer</p><p>Everything is saved in your browser. No account, no server, no analytics. The only link it can open is to Claude on your own computer, if you turn it on.</p></div>
-    <div><p class="facts__t">Never touches secrets</p><p>Passwords, card numbers, CVV and SSN fields are never recorded. Tabmate stops and asks you to fill them.</p></div>
-    <div><p class="facts__t">Waits on big buttons</p><p>Pay, buy, delete or transfer? Tabmate stops and lets you click it.</p></div>
+  <section class="screen" data-screen="hi" aria-labelledby="h-hi">
+    <svg class="hello-mark" viewBox="135 249 759 523" aria-hidden="true"><path pathLength="1" fill="none" stroke="currentColor" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" d="M145 450H426C488 450 482 372 546 372H630C693 372 685 448 750 448H804C851 448 884 481 884 529V681C884 730 853 762 804 762H339C272 762 225 715 225 647V313C225 283 247 259 276 259C305 259 327 283 327 313V450"/></svg>
+    <h1 class="serif h" id="h-hi">Hi, I'm Tabmate.</h1>
+    <p class="lede">I learn your boring tasks and then do them for you.</p>
+    <div class="actions"><button class="btn btn--big btn--lime" type="button" data-go="try">Let's go</button></div>
   </section>
 
-  <footer class="w__foot">Open source, MIT license. This is an early test: tell us what breaks. <a href="https://trytabmate.com" target="_blank" rel="noopener">trytabmate.com</a></footer>
+  <section class="screen" data-screen="try" aria-labelledby="h-try" hidden>
+    <h1 class="serif h" id="h-try">Let's try it.</h1>
+    <p class="lede">We'll practice in a pretend app. Nothing there is real.</p>
+    <ol class="plan" aria-label="What will happen">
+      <li><span class="plan__who">You</span><span class="plan__what">Do a small task</span></li>
+      <li><span class="plan__who">You</span><span class="plan__what">Do it once more</span></li>
+      <li class="plan__me"><span class="plan__who">Me</span><span class="plan__what">I do it alone</span></li>
+    </ol>
+    <div class="actions">
+      <button class="btn btn--big btn--lime" type="button" id="startDemo">Start the practice</button>
+      <button class="link" type="button" data-go="where">Skip for now</button>
+    </div>
+    <p class="note">Takes about one minute. I'll show you every click.</p>
+  </section>
+
+  <section class="screen" data-screen="where" aria-labelledby="h-where" hidden>
+    <h1 class="serif h" id="h-where">Where I work.</h1>
+    <p class="lede">I work in every Chrome tab. Pin me so I'm easy to find.</p>
+    <div class="pair">
+      <figure class="tile">
+        <div class="toolbar" aria-hidden="true">
+          <span class="tb__bar"></span>
+          <span class="tb__puzzle"><svg viewBox="0 0 24 24"><path d="M10 3a2 2 0 0 1 4 0v2h4a1 1 0 0 1 1 1v4h-2a2 2 0 0 0 0 4h2v4a1 1 0 0 1-1 1h-4v-2a2 2 0 0 0-4 0v2H6a1 1 0 0 1-1-1v-4h2a2 2 0 0 0 0-4H5V6a1 1 0 0 1 1-1h4z" fill="currentColor"/></svg></span>
+          <span class="tb__menu">
+            <span class="tb__row"><i class="tb__icon"></i>Tabmate<span class="tb__pin"><svg viewBox="0 0 24 24"><path d="M15 3l6 6-3 1-4 4 1 5-2 1-4-5-5 5-1-1 5-5-5-4 1-2 5 1 4-4z" fill="currentColor"/></svg></span></span>
+          </span>
+        </div>
+        <figcaption><b>Pin me.</b> Click the puzzle piece at the top right of Chrome. Then click the pin next to Tabmate.</figcaption>
+        <p class="live" id="pinState" data-on="0" role="status">Not pinned yet</p>
+      </figure>
+      <figure class="tile">
+        <div class="esc" aria-hidden="true"><kbd>Esc</kbd></div>
+        <figcaption><b>Stop me any time.</b> Press Esc on your keyboard, or just click anywhere. I stop right away.</figcaption>
+      </figure>
+    </div>
+    <div class="actions"><button class="btn btn--big btn--lime" type="button" data-go="claude">Next</button></div>
+  </section>
+
+  <section class="screen" data-screen="claude" aria-labelledby="h-claude" hidden>
+    <h1 class="serif h" id="h-claude">Do you use Claude?</h1>
+    <p class="lede">Claude can ask me to do your tasks too. This part is for people who use Claude on a computer. You can skip it.</p>
+    <details class="how" id="claudeHow">
+      <summary>Show me how to connect Claude</summary>
+      <ol class="how__steps">
+        <li>Click <b>Copy</b>.
+          <div class="cmd"><code id="claudeCmd"></code><button class="btn btn--teal" type="button" id="copyCmd">Copy</button></div>
+        </li>
+        <li>Open the <b>Terminal</b> app, paste it, and press Enter.</li>
+        <li>Restart Claude. My toolbar menu will say <b>Connected to Claude</b>.</li>
+      </ol>
+      <p class="note">You need Node.js 18 or newer. Everything stays on your computer.</p>
+    </details>
+    <div class="actions"><button class="btn btn--big btn--lime" type="button" data-go="done" id="claudeNext">Skip this</button></div>
+  </section>
+
+  <section class="screen" data-screen="done" aria-labelledby="h-done" hidden>
+    <svg class="tick" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" pathLength="1"/><path d="M19 33l9 9 17-19" pathLength="1"/></svg>
+    <h1 class="serif h" id="h-done">You're all set.</h1>
+    <p class="lede">Just work like you always do. Do a task twice and I learn it. Next time you start it, I finish it for you.</p>
+    <div class="actions">
+      <button class="btn btn--big btn--lime" type="button" id="finish">Start using Tabmate</button>
+      <button class="link" type="button" data-go="try">Practice again</button>
+    </div>
+    <p class="note">I never save passwords or card numbers. I stop and let you click Pay or Delete yourself. Everything stays on your computer.</p>
+  </section>
+
 </main>
+
+<nav class="nav" aria-label="Move between steps">
+  <button class="btn btn--line nav__back" type="button" id="back">Back</button>
+  <span class="nav__hint">Use the arrow keys to move</span>
+</nav>
+<script src="lib/shared.js"></script>
+<script src="welcome.js"></script>
 </body>
 </html>

@@ -52,6 +52,27 @@
     $('globalOn').checked = !settings.paused;
     $('pauseLabel').textContent = settings.paused ? 'Paused' : 'On';
 
+    // Today: what Tabmate did for you since midnight.
+    const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    const today = log.filter((e) => e.type === 'done' && e.ts >= midnight.getTime());
+    const savedToday = today.reduce((a, e) => a + (e.savedMs || 0), 0);
+    const tl = $('todayList');
+    tl.textContent = '';
+    $('today').dataset.empty = today.length ? '0' : '1';
+    if (today.length) {
+      const h = $('todayH');
+      h.textContent = '';
+      h.append('Today Tabmate did ', el('b', {}, today.length + (today.length === 1 ? ' task' : ' tasks')), ' for you · saved ', el('b', {}, savedToday ? S.formatSaved(savedToday).replace('~', '').replace(' ', '\u00a0') : 'a little time'));
+      for (const e of today.slice(0, 5)) {
+        const t = new Date(e.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const name = e.name || e.text.replace(/^[^:]+:\s*/, '').split(' · ')[0];
+        tl.append(el('li', {}, el('span', { class: 'today__name' }, name), el('time', { datetime: new Date(e.ts).toISOString() }, t)));
+      }
+      if (today.length > 5) tl.append(el('li', { class: 'today__more' }, 'and ' + (today.length - 5) + ' more'));
+    } else {
+      $('todayH').textContent = workflows.length ? 'Nothing done for you yet today. Start a task you taught me and I’ll finish it.' : 'Work like you always do. When you do a task twice, I’ll learn it.';
+    }
+
     // This site
     const ownPopup = tab && (tab.url || '').startsWith(location.origin + '/popup.html');
     $('siteRow').hidden = !tabSite || ownPopup;
@@ -107,7 +128,7 @@
     const on = bridge.connected > 0 && settings.bridge;
     $('claudeState').dataset.on = on ? '1' : '0';
     $('claudeState').textContent = on ? 'Connected to Claude' + (bridge.clients && bridge.clients.length ? ' (' + bridge.clients.join(', ') + ')' : '') : settings.bridge ? 'Waiting for Claude' : 'Not connected';
-    $('claudeCmd').textContent = 'npx tabmate-mcp install --token ' + (d.bridgeToken || '');
+    $('claudeCmd').textContent = S.claudeCommand(d.bridgeToken);
     $('claudeSetup').hidden = on;
     $('bridgeOn').checked = !!settings.bridge;
 

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Leads</title>
+<style> body { font: 15px system-ui; margin: 32px; } td, th { padding: 6px 12px; border-bottom: 1px solid #ddd; text-align: left; } </style></head>
+<body>
+<h1>Leads</h1>
+<p>New sign-ups. Copy each one into the CRM.</p>
+<table id="leads"><thead><tr><th>Name</th><th>Email</th><th>Company</th></tr></thead><tbody></tbody></table>
+<script>
+// Rows live in localStorage so the test can "receive new leads" between runs.
+const ALL = [
+  ['Maya Chen', 'maya@lumen.test', 'Lumen Labs'], ['Diego Ruiz', 'diego@brightwave.test', 'Brightwave'],
+  ['Ava Patel', 'ava@orchard.test', 'Orchard AI'], ['Noah Kim', 'noah@fieldnote.test', 'Fieldnote'],
+  ['Lena Fischer', 'lena@kite.test', 'Kite & Co'], ['Omar Haddad', 'omar@parcel.test', 'Parcel'],
+  ['Sofia Rossi', 'sofia@tandem.test', 'Tandem'], ['Jonas Berg', 'jonas@northstar.test', 'Northstar'],
+];
+function paint() {
+  const n = Number(localStorage.getItem('rows') || 2);
+  const body = document.querySelector('#leads tbody');
+  body.textContent = '';
+  for (const r of ALL.slice(0, n)) {
+    const tr = document.createElement('tr');
+    for (const c of r) { const td = document.createElement('td'); td.textContent = c; tr.append(td); }
+    body.append(tr);
+  }
+}
+window.addLeads = (k) => { localStorage.setItem('rows', String(Math.min(ALL.length, Number(localStorage.getItem('rows') || 2) + k))); paint(); };
+paint();
+</script>
+</body></html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>CRM</title>
+<style> body { font: 15px system-ui; margin: 32px; } form { display: grid; gap: 8px; max-width: 320px; } .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 16px; } .grid div { background: #f3f3f3; padding: 4px 8px; } </style></head>
+<body>
+<h1>Contacts</h1>
+<form id="add" onsubmit="return false">
+  <label>Name <input id="name" name="name" type="text"></label>
+  <label>Email <input id="email" name="email" type="email"></label>
+  <button type="button" id="addContact">Add contact</button>
+</form>
+<div class="grid" id="sheet" role="grid" aria-label="Contacts sheet"></div>
+<script>
+const key = 'contacts';
+const list = () => JSON.parse(localStorage.getItem(key) || '[]');
+function paint() {
+  const g = document.getElementById('sheet');
+  g.textContent = '';
+  for (const c of list()) for (const v of [c.name, c.email]) { const d = document.createElement('div'); d.textContent = v; g.append(d); }
+}
+document.getElementById('addContact').onclick = () => {
+  const f = document.getElementById('add');
+  localStorage.setItem(key, JSON.stringify(list().concat({ name: f.elements.name.value, email: f.elements.email.value })));
+  f.reset();
+  paint();
+};
+paint();
+</script>
+</body></html>

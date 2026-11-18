@@ -1,18 +1,24 @@
 {
   "name": "tabmate-extension",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Tabmate Chrome extension: learns the tasks you repeat in the browser and does them for you.",
   "license": "MIT",
   "scripts": {
-    "test": "node tests/run.js",
-    "test:headed": "node tests/run.js --headed",
+    "test": "node tests/all.js",
+    "test:headed": "node tests/all.js --headed",
+    "test:core": "node tests/run.js",
+    "test:unit": "node --test tests/unit/learn.test.js tests/unit/mcp.test.js",
+    "test:real": "node tests/real-sites.js",
     "icons": "node scripts/make-icons.js",
-    "build": "sh scripts/build.sh"
+    "build": "sh scripts/build.sh",
+    "postinstall": "npm --prefix mcp install --no-audit --no-fund"
   },
   "devDependencies": {
     "@fontsource/instrument-serif": "^5.3.0",
     "@fontsource/inter-tight": "^5.3.0",
-    "playwright": "1.56.1"
+    "playwright": "1.56.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Export leads · Northwind CRM (Tabmate sandbox)</title>
+<link rel="stylesheet" href="../ui.css">
+<link rel="stylesheet" href="sandbox.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="side__brand"><i></i>Northwind CRM</div>
+    <nav><a href="crm.html" aria-current="page">Leads</a><a href="#" data-noop>Deals</a><a href="#" data-noop>Reports</a></nav>
+    <p class="side__note">This is a fake CRM inside the extension. Nothing here is real, and nothing leaves your computer.</p>
+  </aside>
+  <main class="main">
+    <div class="bar"><h1>Export leads</h1><a class="btn btn--line" href="crm.html">Back to leads</a></div>
+    <form class="card" id="exportForm">
+      <label class="field">Format
+        <select name="format" id="format">
+          <option value="">Choose a format</option>
+          <option value="csv">CSV</option>
+          <option value="xlsx">Excel (.xlsx)</option>
+          <option value="json">JSON</option>
+        </select>
+      </label>
+      <label class="field">File name
+        <input type="text" name="filename" id="filename" placeholder="leads-export" autocomplete="off">
+      </label>
+      <label class="check"><input type="checkbox" name="emails" id="emails"> Include email addresses</label>
+      <div><button class="btn btn--lime" type="submit" id="createExport">Create export</button></div>
+    </form>
+    <div class="result" id="result" role="status" hidden></div>
+  </main>
+</div>
+<script src="../lib/shared.js"></script>
+<script src="sandbox.js"></script>
+<script src="../content.js"></script>
+</body>
+</html>

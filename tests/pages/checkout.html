@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Checkout</title>
+<style> body { font: 15px system-ui; margin: 32px; } form { display: grid; gap: 8px; max-width: 320px; } </style></head>
+<body>
+<h1>Checkout</h1>
+<form id="pay" onsubmit="return false">
+  <label>Full name <input id="fullname" name="fullname" type="text"></label>
+  <label>Email <input id="email" name="email" type="email"></label>
+  <label>Card number <input id="cc" name="ccnum" type="text" autocomplete="cc-number" inputmode="numeric"></label>
+  <label>Security code <input id="cvv" name="cvv" type="text"></label>
+  <label>Account password <input id="pw" name="pw" type="password"></label>
+  <button type="button" id="payNow">Pay now</button>
+</form>
+<p>Orders placed: <b id="orders">0</b></p>
+<script>
+document.getElementById('payNow').onclick = () => { const o = document.getElementById('orders'); o.textContent = String(Number(o.textContent) + 1); };
+</script>
+</body></html>

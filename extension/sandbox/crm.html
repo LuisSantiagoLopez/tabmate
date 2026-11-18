@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leads · Northwind CRM (Tabmate sandbox)</title>
+<link rel="stylesheet" href="../ui.css">
+<link rel="stylesheet" href="sandbox.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="side__brand"><i></i>Northwind CRM</div>
+    <nav><a href="crm.html" aria-current="page">Leads</a><a href="#" data-noop>Deals</a><a href="#" data-noop>Reports</a></nav>
+    <p class="side__note">This is a fake CRM inside the extension. Nothing here is real, and nothing leaves your computer.</p>
+  </aside>
+  <main class="main">
+    <div class="bar">
+      <h1>Leads</h1>
+      <div class="tools">
+        <select id="status" name="status" aria-label="Status">
+          <option value="all">All statuses</option>
+          <option value="qualified">Qualified</option>
+          <option value="new">New</option>
+          <option value="lost">Lost</option>
+        </select>
+        <a class="btn btn--teal" data-testid="export-leads" href="export.html">Export</a>
+      </div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Status</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="count" id="count"></p>
+    <p class="hint">Try it: pick a status, click Export, choose a format, name the file and click Create export. Do it twice. The third time, just pick a status and click Export.</p>
+  </main>
+</div>
+<script src="../lib/shared.js"></script>
+<script src="sandbox.js"></script>
+<script src="../content.js"></script>
+</body>
+</html>

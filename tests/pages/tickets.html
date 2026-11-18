@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Helpdesk</title>
+<style>
+/* Hostile site CSS on purpose: the pill must not be affected. */
+* { font-family: "Comic Sans MS", cursive !important; color: red !important; }
+div, span, button { all: revert; border: 3px dashed magenta !important; }
+body { font: 15px system-ui; margin: 32px; background: #fafafa; }
+form { display: none; gap: 8px; margin: 16px 0; } form.open { display: grid; max-width: 320px; }
+td { padding: 4px 10px; border-bottom: 1px solid #ddd; }
+</style></head>
+<body>
+<h1>Tickets</h1>
+<button id="newTicket" type="button">New ticket</button>
+<form id="ticketForm">
+  <label>Title <input name="title" id="title" type="text"></label>
+  <label>Priority <select name="priority" id="priority"><option value="">Pick one</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+  <button type="button" id="save">Save ticket</button>
+</form>
+<table><tbody id="list"></tbody></table>
+<p id="blank" style="height:200px">Nothing to see here.</p>
+<script>
+const f = document.getElementById('ticketForm');
+document.getElementById('newTicket').onclick = () => { f.reset(); f.classList.add('open'); };
+document.getElementById('save').onclick = () => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td></td><td></td>';
+  tr.children[0].textContent = f.title.value; tr.children[1].textContent = f.priority.value;
+  document.getElementById('list').append(tr);
+  f.classList.remove('open');
+};
+</script>
+</body></html>

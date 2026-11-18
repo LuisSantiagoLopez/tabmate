@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabmate · MCP export (beta)</title>
+<link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="options.css">
+</head>
+<body>
+<main class="o">
+  <header class="o__top">
+    <svg class="mark" viewBox="135 249 759 523" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" d="M145 450H426C488 450 482 372 546 372H630C693 372 685 448 750 448H804C851 448 884 481 884 529V681C884 730 853 762 804 762H339C272 762 225 715 225 647V313C225 283 247 259 276 259C305 259 327 283 327 313V450"/></svg>
+    <span class="serif">Tabmate</span>
+  </header>
+  <h1 class="serif o__h">Every website, an MCP server</h1>
+  <p class="o__badge">MCP export (beta)</p>
+  <p class="o__lede">Each workflow Tabmate learned becomes a named tool with a JSON schema. Copy or download the list to use with an MCP client you build. Tabmate does not run a server or a native host; this is an export only.</p>
+  <div class="o__actions">
+    <button class="btn btn--teal" id="download" type="button">Download tools.json</button>
+    <button class="btn btn--line" id="copy" type="button">Copy JSON</button>
+    <span class="o__msg" id="msg" role="status"></span>
+  </div>
+  <div id="sites"></div>
+  <p class="o__empty" id="empty" hidden>No learned workflows yet. Do a task twice in any site and it shows up here as a tool.</p>
+</main>
+<script src="lib/shared.js"></script>
+<script src="options.js"></script>
+</body>
+</html>
